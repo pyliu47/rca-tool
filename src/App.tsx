@@ -1,6 +1,6 @@
 // src/App.tsx
 import React from "react";
-import type { Diagram, CauseTemplate } from "./types";
+import type { Diagram, CauseTemplate, RCANode } from "./types";
 import {
   createNode,
   addChildNode,
@@ -13,6 +13,10 @@ import { RCATreeView } from "./RCATreeView";
 import { CauseBank } from "./CauseBank";
 import { NotesPane } from "./NotesPane";
 
+/* ---------------------------------------------------
+   1. Default Cause Bank
+----------------------------------------------------*/
+
 const templates: CauseTemplate[] = [
   { id: "t1", label: "High staff turnover" },
   { id: "t2", label: "Limited CHW availability" },
@@ -20,6 +24,10 @@ const templates: CauseTemplate[] = [
   { id: "t4", label: "Supply stockouts" },
   { id: "t5", label: "Poor supervision" },
 ];
+
+/* ---------------------------------------------------
+   2. Initial Diagram Setup
+----------------------------------------------------*/
 
 const createInitialDiagram = (): Diagram => ({
   id: "diag-1",
@@ -47,21 +55,25 @@ const createInitialDiagram = (): Diagram => ({
   },
 });
 
+/* ---------------------------------------------------
+   3. App Component
+----------------------------------------------------*/
+
 const App: React.FC = () => {
   const [diagram, setDiagram] = React.useState<Diagram>(createInitialDiagram);
 
-  // Which node is selected (for highlighting, cause bank insert, notes)
-  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(
-    null
-  );
+  // node selection (fishbone or RCA tree)
+  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
 
-  // Which category is the root of the RCA tree
+  // which category controls the RCA tree
   const [focusNodeId, setFocusNodeId] = React.useState<string | null>(null);
 
-  // Notes keyed by node ID
-  const [notesByNode, setNotesByNode] = React.useState<Record<string, string>>(
-    {}
-  );
+  // Changelog notes per nodeId
+  const [notesByNode, setNotesByNode] = React.useState<Record<string, string>>({});
+
+  /* ---------------------------------------------------
+     Helpers
+  ----------------------------------------------------*/
 
   const isCategory = (id: string | null): boolean => {
     if (!id) return false;
@@ -70,15 +82,18 @@ const App: React.FC = () => {
 
   const handleSelectNode = (id: string) => {
     setSelectedNodeId(id);
-    // If you click a category (top-level child of root), it becomes RCA root
     if (isCategory(id)) {
       setFocusNodeId(id);
     }
   };
 
-  const updateRoot = (fn: (root: any) => any) => {
+  const updateRoot = (fn: (root: RCANode) => RCANode) => {
     setDiagram((prev) => ({ ...prev, root: fn(prev.root) }));
   };
+
+  /* ---------------------------------------------------
+     Diagram Modification
+  ----------------------------------------------------*/
 
   const addCategory = () => {
     updateRoot((root) => ({
@@ -91,19 +106,21 @@ const App: React.FC = () => {
     updateRoot((root) => addChildNode(root, categoryId, "New cause"));
   };
 
-  const addWhy = (parentId: string) => {
-    updateRoot((root) => addChildNode(root, parentId, "Why?"));
+  const addWhy = (nodeId: string) => {
+    updateRoot((root) => addChildNode(root, nodeId, "Why?"));
   };
 
-  const deleteNodeById = (id: string) => {
-    updateRoot((root) => deleteNode(root, id));
-    if (selectedNodeId === id) setSelectedNodeId(null);
-    if (focusNodeId === id) setFocusNodeId(null);
+  const deleteNodeById = (nodeId: string) => {
+    updateRoot((root) => deleteNode(root, nodeId));
 
-    // Remove notes for the deleted node (optional; keep if you want history)
+    // Reset selection if needed
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    if (focusNodeId === nodeId) setFocusNodeId(null);
+
+    // Remove notes for deleted node
     setNotesByNode((prev) => {
       const copy = { ...prev };
-      delete copy[id];
+      delete copy[nodeId];
       return copy;
     });
   };
@@ -116,15 +133,13 @@ const App: React.FC = () => {
     if (!selectedNodeId) return;
     const t = templates.find((x) => x.id === templateId);
     if (!t) return;
+
     updateRoot((root) => addChildNode(root, selectedNodeId, t.label));
   };
 
   const handleChangeNote = (text: string) => {
     if (!selectedNodeId) return;
-    setNotesByNode((prev) => ({
-      ...prev,
-      [selectedNodeId]: text,
-    }));
+    setNotesByNode((prev) => ({ ...prev, [selectedNodeId]: text }));
   };
 
   const currentNote =
@@ -132,10 +147,42 @@ const App: React.FC = () => {
       ? notesByNode[selectedNodeId]
       : "";
 
+  /* ---------------------------------------------------
+     JSON Import Logic
+  ----------------------------------------------------*/
+
+  const handleImportJSON = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+
+        if (!json.diagram || !json.diagram.root) {
+          alert("Invalid JSON: missing diagram.root");
+          return;
+        }
+
+        setDiagram(json.diagram);
+        setNotesByNode(json.notesByNode || {});
+        setSelectedNodeId(null);
+        setFocusNodeId(null);
+      } catch (err) {
+        alert("Failed to import JSON: " + err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  /* ---------------------------------------------------
+     Rendering
+  ----------------------------------------------------*/
+
   return (
     <div className="app-root">
-      {/* Header */}
+
+      {/* HEADER */}
       <header className="app-header">
+
         <input
           className="title-input"
           value={diagram.title}
@@ -143,6 +190,26 @@ const App: React.FC = () => {
             setDiagram((prev) => ({ ...prev, title: e.target.value }))
           }
         />
+
+        {/* Hidden input for JSON import */}
+        <input
+          type="file"
+          accept="application/json"
+          id="import-json-input"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImportJSON(file);
+          }}
+        />
+
+        <button
+          className="secondary-btn"
+          onClick={() => document.getElementById("import-json-input")?.click()}
+        >
+          Import JSON
+        </button>
+
         <button
           className="secondary-btn"
           onClick={() => {
@@ -162,8 +229,9 @@ const App: React.FC = () => {
         </button>
       </header>
 
-      {/* Three-column main: Fishbone | RCA Tree | Notes */}
+      {/* MAIN THREE-PANE LAYOUT */}
       <main className="app-main">
+
         <FishboneView
           root={diagram.root}
           selectedNodeId={selectedNodeId}
@@ -192,7 +260,7 @@ const App: React.FC = () => {
         />
       </main>
 
-      {/* Cause bank footer */}
+      {/* CAUSE BANK */}
       <footer className="app-footer">
         <CauseBank
           templates={templates}
