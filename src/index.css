@@ -1,0 +1,188 @@
+/* src/index.css */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.app-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header ---------- */
+
+.app-header {
+  padding: 6px 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.title-input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.secondary-btn,
+.small-btn {
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.secondary-btn:hover,
+.small-btn:hover {
+  background: #f3f4f6;
+}
+
+/* ---------- Main layout (two panes) ---------- */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  /* critical for flex children to size correctly */
+  padding: 4px 4px 0;
+  gap: 4px;
+}
+
+.pane {
+  flex: 1;
+  min-width: 0;
+  /* allow panes to shrink */
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+/* header inside each pane */
+.pane-header {
+  padding: 4px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.pane-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* body area where SVG should fill */
+.pane-body {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+}
+
+/* The SVG itself will be width/height 100% of this container */
+.pane-body svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Stack panes vertically on very narrow screens */
+@media (max-width: 900px) {
+  .app-main {
+    flex-direction: column;
+  }
+}
+
+/* Fishbone + RCA Tree */
+.pane-wide {
+  flex: 3;
+  /* each = 3/8 of total width */
+}
+
+/* Notes pane */
+.pane-narrow {
+  flex: 2;
+  /* = 2/8 = 1/4 of total width */
+}
+
+/* ---------- Footer / Cause Bank ---------- */
+
+.app-footer {
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 4px 8px;
+}
+
+.bank {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bank-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bank-search {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+
+.bank-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.bank-item {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.bank-item:hover {
+  background: #e5e7eb;
+}
+
+.notes-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  padding: 6px 8px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  box-sizing: border-box;
+}
