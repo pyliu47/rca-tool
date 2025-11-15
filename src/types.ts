@@ -1,3 +1,7 @@
+// src/types.ts
+
+export type PriorityLevel = "none" | "low" | "medium" | "high";
+
 export interface RCANode {
     id: string;
     label: string;
@@ -13,5 +17,4 @@ export interface Diagram {
 export interface CauseTemplate {
     id: string;
     label: string;
-    tags?: string[];
 }

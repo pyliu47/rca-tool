@@ -1,12 +1,7 @@
 // src/App.tsx
 import React from "react";
-import type { Diagram, CauseTemplate, RCANode } from "./types";
-import {
-  createNode,
-  addChildNode,
-  deleteNode,
-  renameNode,
-} from "./utils";
+import type { Diagram, CauseTemplate, RCANode, PriorityLevel } from "./types";
+import { createNode, addChildNode, deleteNode, renameNode } from "./utils";
 
 import { FishboneView } from "./FishboneView";
 import { RCATreeView } from "./RCATreeView";
@@ -63,13 +58,22 @@ const App: React.FC = () => {
   const [diagram, setDiagram] = React.useState<Diagram>(createInitialDiagram);
 
   // node selection (fishbone or RCA tree)
-  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(
+    null
+  );
 
   // which category controls the RCA tree
   const [focusNodeId, setFocusNodeId] = React.useState<string | null>(null);
 
   // Changelog notes per nodeId
-  const [notesByNode, setNotesByNode] = React.useState<Record<string, string>>({});
+  const [notesByNode, setNotesByNode] = React.useState<Record<string, string>>(
+    {}
+  );
+
+  // Priority per nodeId
+  const [priorityByNode, setPriorityByNode] = React.useState<
+    Record<string, PriorityLevel>
+  >({});
 
   /* ---------------------------------------------------
      Helpers
@@ -113,12 +117,18 @@ const App: React.FC = () => {
   const deleteNodeById = (nodeId: string) => {
     updateRoot((root) => deleteNode(root, nodeId));
 
-    // Reset selection if needed
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
     if (focusNodeId === nodeId) setFocusNodeId(null);
 
     // Remove notes for deleted node
     setNotesByNode((prev) => {
+      const copy = { ...prev };
+      delete copy[nodeId];
+      return copy;
+    });
+
+    // Remove priority for deleted node
+    setPriorityByNode((prev) => {
       const copy = { ...prev };
       delete copy[nodeId];
       return copy;
@@ -142,10 +152,20 @@ const App: React.FC = () => {
     setNotesByNode((prev) => ({ ...prev, [selectedNodeId]: text }));
   };
 
+  const handleChangePriority = (level: PriorityLevel) => {
+    if (!selectedNodeId) return;
+    setPriorityByNode((prev) => ({ ...prev, [selectedNodeId]: level }));
+  };
+
   const currentNote =
     selectedNodeId && notesByNode[selectedNodeId]
       ? notesByNode[selectedNodeId]
       : "";
+
+  const currentPriority: PriorityLevel =
+    selectedNodeId && priorityByNode[selectedNodeId]
+      ? priorityByNode[selectedNodeId]
+      : "none";
 
   /* ---------------------------------------------------
      JSON Import Logic
@@ -164,6 +184,7 @@ const App: React.FC = () => {
 
         setDiagram(json.diagram);
         setNotesByNode(json.notesByNode || {});
+        setPriorityByNode(json.priorityByNode || {});
         setSelectedNodeId(null);
         setFocusNodeId(null);
       } catch (err) {
@@ -179,10 +200,8 @@ const App: React.FC = () => {
 
   return (
     <div className="app-root">
-
       {/* HEADER */}
       <header className="app-header">
-
         <input
           className="title-input"
           value={diagram.title}
@@ -214,7 +233,13 @@ const App: React.FC = () => {
           className="secondary-btn"
           onClick={() => {
             const blob = new Blob(
-              [JSON.stringify({ diagram, notesByNode }, null, 2)],
+              [
+                JSON.stringify(
+                  { diagram, notesByNode, priorityByNode },
+                  null,
+                  2
+                ),
+              ],
               { type: "application/json" }
             );
             const url = URL.createObjectURL(blob);
@@ -231,7 +256,6 @@ const App: React.FC = () => {
 
       {/* MAIN THREE-PANE LAYOUT */}
       <main className="app-main">
-
         <FishboneView
           root={diagram.root}
           selectedNodeId={selectedNodeId}
@@ -240,6 +264,7 @@ const App: React.FC = () => {
           onAddCause={addCause}
           onLabelChange={changeLabel}
           onDelete={deleteNodeById}
+          priorityByNode={priorityByNode}
         />
 
         <RCATreeView
@@ -250,6 +275,7 @@ const App: React.FC = () => {
           onAddChild={addWhy}
           onDelete={deleteNodeById}
           onLabelChange={changeLabel}
+          priorityByNode={priorityByNode}
         />
 
         <NotesPane
@@ -257,6 +283,8 @@ const App: React.FC = () => {
           selectedNodeId={selectedNodeId}
           noteText={currentNote}
           onChangeNote={handleChangeNote}
+          priority={currentPriority}
+          onChangePriority={handleChangePriority}
         />
       </main>
 

@@ -8,8 +8,10 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  background: #f3f4f6;
-  color: #111827;
+  background: #e5f0ff;
+  /* light blue instead of yellow-ish */
+  color: #1e293b;
+  /* ink */
 }
 
 .app-root {
@@ -21,85 +23,100 @@ body {
 /* ---------- Header ---------- */
 
 .app-header {
-  padding: 6px 8px;
+  padding: 8px 12px;
   display: flex;
   gap: 8px;
   align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-bottom: none;
+  background: #e5f0ff;
+  /* match body */
+}
+
+.app-header>* {
+  /* empty - keep default flex behavior */
 }
 
 .title-input {
   flex: 1;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
   font-size: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
+/* Buttons */
 .secondary-btn,
 .small-btn {
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
-  background: #ffffff;
+  background: #f9fafb;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: background 120ms ease, transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .secondary-btn:hover,
 .small-btn:hover {
-  background: #f3f4f6;
+  background: #e0f2fe;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
 
-/* ---------- Main layout (two panes) ---------- */
+/* ---------- Main layout ---------- */
 
 .app-main {
   flex: 1;
   display: flex;
   min-height: 0;
-  /* critical for flex children to size correctly */
-  padding: 4px 4px 0;
-  gap: 4px;
+  padding: 8px 8px 4px;
+  gap: 8px;
 }
 
+/* Panes become cards */
 .pane {
   flex: 1;
   min-width: 0;
-  /* allow panes to shrink */
-  background: #f9fafb;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 /* header inside each pane */
 .pane-header {
-  padding: 4px 8px;
+  padding: 6px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 11px;
-  color: #4b5563;
-  border-bottom: 1px solid #e5e7eb;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
   background: #f9fafb;
+  border-radius: 12px 12px 0 0;
 }
 
 .pane-title {
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 /* body area where SVG should fill */
 .pane-body {
   flex: 1;
   min-height: 0;
-  padding: 4px;
+  padding: 6px;
+  border-radius: 0 0 12px 12px;
 }
 
-/* The SVG itself will be width/height 100% of this container */
 .pane-body svg {
   width: 100%;
   height: 100%;
@@ -116,27 +133,32 @@ body {
 /* Fishbone + RCA Tree */
 .pane-wide {
   flex: 3;
-  /* each = 3/8 of total width */
 }
 
 /* Notes pane */
 .pane-narrow {
   flex: 2;
-  /* = 2/8 = 1/4 of total width */
 }
 
 /* ---------- Footer / Cause Bank ---------- */
 
 .app-footer {
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
-  padding: 4px 8px;
+  border-top: none;
+  background: transparent;
+  padding: 0 8px 8px;
 }
 
+/* Cause bank as a small card (not a pill) */
 .bank {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  background: #ffffff;
+  border-radius: 12px;
+  /* << changed from 999px */
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 .bank-header {
@@ -147,10 +169,11 @@ body {
 
 .bank-search {
   flex: 1;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
   font-size: 12px;
+  background: #f9fafb;
 }
 
 .bank-list {
@@ -159,30 +182,48 @@ body {
   gap: 6px;
   max-height: 80px;
   overflow-y: auto;
+  margin-top: 4px;
 }
 
+/* cause chips */
 .bank-item {
   border-radius: 999px;
-  border: 1px solid #d1d5db;
-  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  padding: 4px 10px;
   font-size: 11px;
-  background: #f9fafb;
+  background: #eef2ff;
   cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease,
+    box-shadow 120ms ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .bank-item:hover {
-  background: #e5e7eb;
+  background: #e0f2fe;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
+
+/* ---------- Notes textarea ---------- */
 
 .notes-textarea {
   width: 100%;
   height: 100%;
   resize: none;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  border: 1px solid #ffffff;
   font-size: 13px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   box-sizing: border-box;
+  background: #ffffff;
+  /* journal-like */
+  line-height: 1.5;
+}
+
+.app-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
