@@ -401,7 +401,6 @@ const App: React.FC = () => {
               root={diagram.root}
               focusNodeId={focusNodeId}
               selectedNodeId={selectedNodeId}
-              onSelect={handleSelectNode}
               onAddChild={addWhy}
               onDelete={deleteNodeById}
               onLabelChange={changeLabel}
