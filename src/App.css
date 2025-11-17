@@ -43,3 +43,41 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Scrollbar styling - hide by default, show on hover */
+.pane-body {
+  scrollbar-width: none;
+  /* Firefox - hide by default */
+  scrollbar-color: transparent transparent;
+}
+
+.pane-body:hover {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Chrome/Safari - hide by default */
+.pane-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pane-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pane-body::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+/* Show on hover */
+.pane-body:hover::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.pane-body:hover::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}

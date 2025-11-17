@@ -2,8 +2,7 @@
 import React from "react";
 import type { RCANode, PriorityLevel } from "./types";
 import { findNode } from "./utils";
-import { usePanZoom } from "./usePanZoom";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, ZoomIn, ZoomOut } from "lucide-react";
 
 interface Props {
     root: RCANode;
@@ -23,6 +22,37 @@ interface PositionedNode {
     level: number;
 }
 
+/* ---------- Text wrapping helpers ---------- */
+
+const MAX_CHARS_PER_LINE = 20;
+
+function wrapLabel(label: string): string[] {
+    const words = label.split(/\s+/);
+    const lines: string[] = [];
+    let current = "";
+
+    words.forEach((word) => {
+        if ((current + word).length > MAX_CHARS_PER_LINE && current) {
+            lines.push(current.trim());
+            current = word;
+        } else {
+            current += (current ? " " : "") + word;
+        }
+    });
+
+    if (current) lines.push(current.trim());
+    return lines.length ? lines : [label];
+}
+
+function getCardHeight(label: string): number {
+    const lines = wrapLabel(label);
+    const lineHeight = 18; // px
+    // some vertical padding + space for all lines
+    return Math.max(40, lines.length * lineHeight + 12);
+}
+
+/* ---------- Main component ---------- */
+
 export const RCATreeView: React.FC<Props> = ({
     root,
     focusNodeId,
@@ -33,25 +63,25 @@ export const RCATreeView: React.FC<Props> = ({
     onLabelChange,
     priorityByNode,
 }) => {
-    const width = 800;
-    const levelHeight = 100;
-
-    const {
-        pan,
-        scale,
-        isPanning,
-        svgHandlers,
-        zoomIn,
-        zoomOut,
-        resetView,
-    } = usePanZoom();
+    const minLogicalWidth = 400; // Smaller initial width so it's compact
+    const cardWidth = 160;
+    const minCardSpacing = 20;
 
     const [locked, setLocked] = React.useState(false);
+    const [scale, setScale] = React.useState(1);
+    const [fishboneRoot, setFishboneRoot] = React.useState<string | null>(null);
+    const [internalSelection, setInternalSelection] =
+        React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        // Update fishboneRoot when selectedNodeId changes
+        setFishboneRoot(selectedNodeId);
+    }, [selectedNodeId]);
 
     const focusNode =
-        focusNodeId && focusNodeId !== root.id
-            ? findNode(root, focusNodeId)
-            : null;
+        focusNodeId && focusNodeId !== root.id ? findNode(root, focusNodeId) : null;
+
+    /* ---------- Empty state ---------- */
 
     if (!focusNode) {
         return (
@@ -86,20 +116,84 @@ export const RCATreeView: React.FC<Props> = ({
         );
     }
 
-    const positioned = layoutTree(focusNode, width, levelHeight);
-    const byId = new Map<string, PositionedNode>();
-    positioned.forEach((p) => byId.set(p.node.id, p));
+    /* ---------- Layout ---------- */
 
-    const totalHeight = (maxLevel(positioned) + 1) * levelHeight + 200;
+    // Determine root: use fishboneRoot (Fishbone selection) or focusNode (category)
+    let treeRoot = focusNode;
+
+    if (fishboneRoot && fishboneRoot !== root.id) {
+        const node = findNode(root, fishboneRoot);
+        if (node) {
+            treeRoot = node;
+        }
+    }
+
+    const levelCounts = getNodeCountsByLevel(treeRoot);
+    const maxNodesAtAnyLevel = Math.max(...levelCounts);
+    // Use a temporary large width to layout tree without initial centering constraints
+    const layoutWidth = maxNodesAtAnyLevel * (cardWidth + minCardSpacing) + 500;
+
+    // Layout tree - root will be positioned at layoutWidth/2
+    const allPositioned = layoutTree(treeRoot, layoutWidth);
+    const byId = new Map<string, PositionedNode>();
+    allPositioned.forEach((p) => byId.set(p.node.id, p));
+
+    // Calculate actual bounds from positioned nodes
+    let minX = Infinity,
+        maxX = -Infinity;
+    let maxY = 0;
+    allPositioned.forEach((p) => {
+        const h = getCardHeight(p.node.label);
+        const w = cardWidth;
+        const left = p.x - w / 2;
+        const right = p.x + w / 2;
+        const bottom = p.y + h / 2;
+
+        minX = Math.min(minX, left);
+        maxX = Math.max(maxX, right);
+        maxY = Math.max(maxY, bottom);
+    });
+
+    // Determine final logical width (compact if fits, expanded if needed)
+    const contentWidth = maxX - minX + 50; // Reduced padding since offset will center
+    const logicalWidth = Math.max(minLogicalWidth, contentWidth);
+    const logicalHeight = Math.max(400, maxY + 100);
+
+    // Center the content within the final logical width
+    const contentCenterX = (minX + maxX) / 2;
+    const logicalCenterX = logicalWidth / 2;
+    const offsetX = logicalCenterX - contentCenterX;
+
+    allPositioned.forEach((p) => {
+        p.x += offsetX;
+    });
+
+    /* ---------- Render ---------- */
 
     return (
         <div className="pane pane-wide">
             <div className="pane-header">
                 <span className="pane-title">
-                    RCA Tree (category: {focusNode.label})
+                    RCA Tree{" "}
+                    {treeRoot.id !== focusNode.id
+                        ? `(Cause: ${treeRoot.label})`
+                        : `(Category: ${focusNode.label})`}
                 </span>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    {/* Lock toggle */}
+                    <button
+                        className="small-btn"
+                        onClick={() => setScale((s) => Math.min(3, s + 0.2))}
+                        title="Zoom in"
+                    >
+                        <ZoomIn size={16} />
+                    </button>
+                    <button
+                        className="small-btn"
+                        onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
+                        title="Zoom out"
+                    >
+                        <ZoomOut size={16} />
+                    </button>
                     <button
                         className="small-btn"
                         onClick={() => setLocked((v) => !v)}
@@ -107,138 +201,180 @@ export const RCATreeView: React.FC<Props> = ({
                     >
                         {locked ? <Lock size={16} /> : <Unlock size={16} />}
                     </button>
-                    <button className="small-btn" onClick={zoomOut}>
-                        −
-                    </button>
-                    <button className="small-btn" onClick={zoomIn}>
-                        +
-                    </button>
-                    <button className="small-btn" onClick={resetView}>
-                        Reset
-                    </button>
                 </div>
             </div>
 
-            <div className="pane-body">
-                <svg
-                    viewBox={`0 0 ${width} ${totalHeight}`}
+            <div className="pane-body" style={{ overflow: "auto" }}>
+                {/* Inner canvas sized to the diagram; keeps scrollbars aligned to SVG */}
+                <div
                     style={{
-                        background: "white",
-                        borderRadius: 8,
-                        cursor: isPanning ? "grabbing" : "grab",
+                        position: "relative",
+                        width: `${logicalWidth}px`,
+                        minHeight: logicalHeight,
+                        margin: "0 auto",
                     }}
-                    {...svgHandlers}
                 >
-                    <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
-                        {/* Edges */}
-                        {positioned.map((p) =>
-                            p.node.children.map((child) => {
-                                const c = byId.get(child.id);
-                                if (!c) return null;
+                    <svg
+                        viewBox={`0 0 ${logicalWidth} ${logicalHeight}`}
+                        style={{
+                            background: "white",
+                            borderRadius: 8,
+                            display: "block",
+                            width: "100%",
+                            height: `${logicalHeight}px`,
+                        }}
+                    >
+                        <g
+                            transform={`
+                translate(${logicalWidth / 2}, ${logicalHeight / 2})
+                scale(${scale})
+                translate(-${logicalWidth / 2}, -${logicalHeight / 2})
+              `}
+                        >
+                            {/* Edges */}
+                            {allPositioned.map((p) =>
+                                p.node.children.map((child) => {
+                                    const c = byId.get(child.id);
+                                    if (!c) return null;
+
+                                    const pHeight = getCardHeight(p.node.label);
+                                    const cHeight = getCardHeight(child.label);
+                                    const parentBottom = p.y + pHeight / 2;
+                                    const childTop = c.y - cHeight / 2;
+                                    const midY = (parentBottom + childTop) / 2;
+
+                                    return (
+                                        <path
+                                            key={`${p.node.id}-${child.id}`}
+                                            d={`M ${p.x} ${parentBottom} C ${p.x} ${midY} ${c.x} ${midY} ${c.x} ${childTop}`}
+                                            stroke="#cbd5e1"
+                                            strokeWidth={1}
+                                            fill="none"
+                                        />
+                                    );
+                                })
+                            )}
+
+                            {/* Nodes */}
+                            {allPositioned.map((p) => {
+                                const nodeWidth = cardWidth;
+                                const nodeHeight = getCardHeight(p.node.label);
+                                const isSelected = p.node.id === internalSelection;
+                                const isRoot = p.node.id === focusNode.id;
+                                const priority = priorityByNode[p.node.id];
+
+                                const base = getNodeColors(priority, isRoot);
+                                const stroke = isSelected ? "#3a7dff" : base.stroke;
+                                const strokeWidth = isSelected ? 2.4 : 1.4;
+
                                 return (
-                                    <line
-                                        key={`${p.node.id}-${child.id}`}
-                                        x1={p.x}
-                                        y1={p.y + 30}
-                                        x2={c.x}
-                                        y2={c.y - 30}
-                                        stroke="#cbd5e1"
-                                        strokeWidth={1.2}
-                                    />
-                                );
-                            })
-                        )}
+                                    <g key={p.node.id}>
+                                        <rect
+                                            x={p.x - nodeWidth / 2}
+                                            y={p.y - nodeHeight / 2}
+                                            width={nodeWidth}
+                                            height={nodeHeight}
+                                            rx={10}
+                                            ry={10}
+                                            fill={base.fill}
+                                            stroke={stroke}
+                                            strokeWidth={strokeWidth}
+                                            onClick={() => setInternalSelection(p.node.id)}
+                                        />
 
-                        {/* Nodes */}
-                        {positioned.map((p) => {
-                            const nodeWidth = 160;
-                            const nodeHeight = 40;
-                            const isSelected = p.node.id === selectedNodeId;
-                            const isRoot = p.node.id === focusNode.id;
+                                        <EditableTextNode
+                                            x={p.x}
+                                            y={p.y}
+                                            boxWidth={nodeWidth - 8}
+                                            boxHeight={nodeHeight - 8}
+                                            value={p.node.label}
+                                            disabled={locked}
+                                            onSelect={() => setInternalSelection(p.node.id)}
+                                            onChange={(v) => onLabelChange(p.node.id, v)}
+                                        />
 
-                            const priority = priorityByNode[p.node.id];
-                            const base = getNodeColors(priority, isRoot);
-                            const stroke = isSelected ? "#3a7dff" : base.stroke;
-                            const strokeWidth = isSelected ? 2.6 : 1.4;
-
-                            return (
-                                <g key={p.node.id}>
-                                    <rect
-                                        x={p.x - nodeWidth / 2}
-                                        y={p.y - nodeHeight / 2}
-                                        width={nodeWidth}
-                                        height={nodeHeight}
-                                        rx={10}
-                                        ry={10}
-                                        fill={base.fill}
-                                        stroke={stroke}
-                                        strokeWidth={strokeWidth}
-                                        onClick={() => onSelect(p.node.id)}
-                                    />
-
-                                    {/* Editable label – same popout behavior as Fishbone, with lock */}
-                                    <EditableTextNode
-                                        x={p.x}
-                                        y={p.y + 3}
-                                        boxWidth={nodeWidth - 8}
-                                        boxHeight={nodeHeight - 8}
-                                        value={p.node.label}
-                                        disabled={locked}
-                                        onSelect={() => onSelect(p.node.id)}
-                                        onChange={(v) => onLabelChange(p.node.id, v)}
-                                    />
-
-                                    {/* + Why? */}
-                                    <text
-                                        x={p.x - nodeWidth / 2 + 6}
-                                        y={p.y + nodeHeight / 2 + 14}
-                                        fontSize={10}
-                                        fill={locked ? "#cbd5e1" : "#16a34a"}
-                                        style={{
-                                            cursor: locked ? "default" : "pointer",
-                                        }}
-                                        onClick={
-                                            locked ? undefined : () => onAddChild(p.node.id)
-                                        }
-                                    >
-                                        + Why?
-                                    </text>
-
-                                    {/* Delete (not root) */}
-                                    {!isRoot && (
+                                        {/* + Why? */}
                                         <text
-                                            x={p.x + nodeWidth / 2 - 10}
-                                            y={p.y - nodeHeight / 2 - 4}
-                                            fontSize={12}
-                                            fill={locked ? "#e5e7eb" : "#f97373"}
-                                            style={{
-                                                cursor: locked ? "default" : "pointer",
-                                            }}
+                                            x={p.x - nodeWidth / 2 + 6}
+                                            y={p.y + nodeHeight / 2 + 14}
+                                            fontSize={10}
+                                            fill={locked ? "#cbd5e1" : "#16a34a"}
+                                            style={{ cursor: locked ? "default" : "pointer" }}
                                             onClick={
-                                                locked ? undefined : () => onDelete(p.node.id)
+                                                locked ? undefined : () => onAddChild(p.node.id)
                                             }
                                         >
-                                            ✕
+                                            + Why?
                                         </text>
-                                    )}
-                                </g>
-                            );
-                        })}
-                    </g>
-                </svg>
+
+                                        {/* Delete (not root) */}
+                                        {!isRoot && (
+                                            <text
+                                                x={p.x + nodeWidth / 2 - 10}
+                                                y={p.y - nodeHeight / 2 - 6}
+                                                fontSize={12}
+                                                fill={locked ? "#e5e7eb" : "#f97373"}
+                                                style={{ cursor: locked ? "default" : "pointer" }}
+                                                onClick={
+                                                    locked ? undefined : () => onDelete(p.node.id)
+                                                }
+                                            >
+                                                ✕
+                                            </text>
+                                        )}
+                                    </g>
+                                );
+                            })}
+                        </g>
+                    </svg>
+                </div>
             </div>
         </div>
     );
 };
 
-/* ------------ Layout helpers ------------ */
+/* ---------- Layout helpers ---------- */
 
-function layoutTree(
-    root: RCANode,
-    width: number,
-    levelHeight: number
-): PositionedNode[] {
+function getNodeCountsByLevel(root: RCANode): number[] {
+    const counts: number[] = [];
+    const queue: { node: RCANode; level: number }[] = [{ node: root, level: 0 }];
+
+    while (queue.length) {
+        const { node, level } = queue.shift()!;
+        counts[level] = (counts[level] || 0) + 1;
+        node.children.forEach((child) =>
+            queue.push({ node: child, level: level + 1 })
+        );
+    }
+    return counts;
+}
+
+function layoutTree(root: RCANode, width: number): PositionedNode[] {
     const nodes: PositionedNode[] = [];
+    const cardWidth = 160;
+    const minHorizontalSpacing = 40; // Minimum gap between siblings
+
+    // Map to store subtree width for each node
+    const subtreeWidths = new Map<string, number>();
+
+    // Calculate subtree width (how much space this node and all descendants need)
+    function calculateSubtreeWidth(node: RCANode): number {
+        if (node.children.length === 0) {
+            return cardWidth;
+        }
+
+        const childWidths = node.children.map((child) => calculateSubtreeWidth(child));
+        const totalChildWidth =
+            childWidths.reduce((sum, w) => sum + w + minHorizontalSpacing, 0) -
+            minHorizontalSpacing;
+
+        subtreeWidths.set(node.id, Math.max(cardWidth, totalChildWidth));
+        return subtreeWidths.get(node.id)!;
+    }
+
+    calculateSubtreeWidth(root);
+
+    // Build level structure
     const levels: RCANode[][] = [];
     const queue: { node: RCANode; level: number }[] = [{ node: root, level: 0 }];
 
@@ -251,26 +387,100 @@ function layoutTree(
         );
     }
 
+    // Position nodes
+    const nodesByLevel: PositionedNode[][] = [];
+    let currentLevelY = 60;
+
     levels.forEach((levelNodes, level) => {
-        const spacing = width / (levelNodes.length + 1);
-        levelNodes.forEach((node, idx) => {
-            nodes.push({
+        const levelNodesPositioned: PositionedNode[] = [];
+        const topY = currentLevelY;
+
+        // For each node at this level, find its parent's X position
+        levelNodes.forEach((node) => {
+            const cardHeight = getCardHeight(node.label);
+
+            // Find parent node and its X position
+            let parentX = width / 2; // Default to center if root
+            if (level > 0) {
+                const parentNode = levels[level - 1].find((parent) =>
+                    parent.children.some((child) => child.id === node.id)
+                );
+                if (parentNode) {
+                    const parentPos = nodesByLevel[level - 1]?.find(
+                        (p) => p.node.id === parentNode.id
+                    );
+                    if (parentPos) {
+                        parentX = parentPos.x;
+                    }
+                }
+            }
+
+            levelNodesPositioned.push({
                 node,
                 level,
-                x: spacing * (idx + 1),
-                y: 60 + level * levelHeight,
+                x: parentX,
+                y: topY + cardHeight / 2,
             });
         });
+
+        // Group children by parent and position them with proper spacing
+        const childrenByParent = new Map<string, PositionedNode[]>();
+        levelNodesPositioned.forEach((pos) => {
+            const parent = levels[level - 1]?.find((p) =>
+                p.children.some((c) => c.id === pos.node.id)
+            );
+            const parentId = parent?.id || "root";
+            if (!childrenByParent.has(parentId)) {
+                childrenByParent.set(parentId, []);
+            }
+            childrenByParent.get(parentId)!.push(pos);
+        });
+
+        // Position children with dynamic spacing based on subtree widths
+        childrenByParent.forEach((children) => {
+            if (children.length === 1) {
+                // Single child: directly under parent
+                children[0].x = children[0].x;
+            } else {
+                // Multiple children: calculate total width needed
+                const totalWidth =
+                    children.reduce((sum, child) => {
+                        const subtreeWidth = subtreeWidths.get(child.node.id) || cardWidth;
+                        return sum + subtreeWidth + minHorizontalSpacing;
+                    }, 0) - minHorizontalSpacing;
+
+                // Position children so their center of mass is at parent's X
+                const startX = children[0].x - totalWidth / 2;
+                let currentX = startX;
+
+                children.forEach((child) => {
+                    const subtreeWidth = subtreeWidths.get(child.node.id) || cardWidth;
+                    child.x = currentX + subtreeWidth / 2; // Position at center of subtree
+                    currentX += subtreeWidth + minHorizontalSpacing;
+                });
+            }
+        });
+
+        nodesByLevel[level] = levelNodesPositioned;
+        nodes.push(...levelNodesPositioned);
+
+        // Calculate the maximum bottom of all cards at this level
+        let maxBottom = topY;
+        levelNodesPositioned.forEach((p) => {
+            const cardHeight = getCardHeight(p.node.label);
+            const cardBottom = p.y + cardHeight / 2;
+            maxBottom = Math.max(maxBottom, cardBottom);
+        });
+
+        // Next level starts below this level with 40px spacing
+        currentLevelY = maxBottom + 40;
     });
 
     return nodes;
 }
 
-function maxLevel(nodes: PositionedNode[]): number {
-    return nodes.reduce((max, n) => Math.max(max, n.level), 0);
-}
+/* ---------- Colors ---------- */
 
-/** Match fishbone palette */
 function getNodeColors(
     priority: PriorityLevel | undefined,
     isRoot: boolean
@@ -285,12 +495,12 @@ function getNodeColors(
         case "none":
         default:
             return isRoot
-                ? { fill: "#fff5d6", stroke: "#e3bd62" } // root a soft honey
+                ? { fill: "#fff5d6", stroke: "#e3bd62" }
                 : { fill: "#f9fafb", stroke: "#cbd5e1" };
     }
 }
 
-/* ------------ Editable text for RCA nodes ------------ */
+/* ---------- Editable text node ---------- */
 
 interface EditableNodeProps {
     x: number;
@@ -320,37 +530,51 @@ const EditableTextNode: React.FC<EditableNodeProps> = ({
 
     React.useEffect(() => setDraft(value), [value]);
 
-    if (disabled) {
+    const lines = React.useMemo(() => wrapLabel(value), [value]);
+    const lineHeight = fontSize * 1.2;
+    const totalTextHeight = (lines.length - 1) * lineHeight;
+    const startY = y - totalTextHeight / 2; // center block in card
+
+    if (disabled && !editing) {
         return (
-            <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                fontSize={fontSize}
-                fill="#1e293b"
-            >
-                {value}
-            </text>
+            <g>
+                {lines.map((line, idx) => (
+                    <text
+                        key={idx}
+                        x={x}
+                        y={startY + idx * lineHeight}
+                        textAnchor="middle"
+                        fontSize={fontSize}
+                        fill="#1e293b"
+                    >
+                        {line}
+                    </text>
+                ))}
+            </g>
         );
     }
 
     if (!editing) {
         return (
-            <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                fontSize={fontSize}
-                fill="#1e293b"
-                style={{ cursor: "text" }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect?.();
-                    setEditing(true);
-                }}
-            >
-                {value}
-            </text>
+            <g style={{ cursor: "text" }}>
+                {lines.map((line, idx) => (
+                    <text
+                        key={idx}
+                        x={x}
+                        y={startY + idx * lineHeight}
+                        textAnchor="middle"
+                        fontSize={fontSize}
+                        fill="#1e293b"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect?.();
+                            setEditing(true);
+                        }}
+                    >
+                        {line}
+                    </text>
+                ))}
+            </g>
         );
     }
 

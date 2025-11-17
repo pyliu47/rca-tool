@@ -1,18 +1,26 @@
 // src/App.tsx
 import React from "react";
-import type { Diagram, CauseTemplate, RCANode, PriorityLevel } from "./types";
-import { createNode, addChildNode, deleteNode, renameNode } from "./utils";
+import type { Diagram, RCANode, PriorityLevel } from "./types";
+import {
+  createNode,
+  addChildNode,
+  deleteNode,
+  renameNode,
+} from "./utils";
 
 import { FishboneView } from "./FishboneView";
 import { RCATreeView } from "./RCATreeView";
 import { CauseBank } from "./CauseBank";
 import { NotesPane } from "./NotesPane";
+import InterventionLayout from "./InterventionLayout";
+
+import type { TocBundle } from "./tocTypes";
 
 /* ---------------------------------------------------
    1. Default Cause Bank
 ----------------------------------------------------*/
 
-const templates: CauseTemplate[] = [
+const templates = [
   { id: "t1", label: "High staff turnover" },
   { id: "t2", label: "Limited CHW availability" },
   { id: "t3", label: "Unreliable microplanning" },
@@ -51,10 +59,39 @@ const createInitialDiagram = (): Diagram => ({
 });
 
 /* ---------------------------------------------------
-   3. App Component
+   3. Create Empty ToC Bundle
+----------------------------------------------------*/
+
+const createEmptyBundle = (id: string): TocBundle => ({
+  id,
+  name: "",
+  description: "",
+  causeIds: [],
+  inputs: [],
+  activities: [],
+  outputs: [],
+  outcomes: [],
+  assumptions: {
+    inputs: [],
+    activities: [],
+    outputs: [],
+    outcomes: [],
+  },
+  risks: "",
+  gender: "none",
+  genderNotes: "",
+  actors: [],
+  evidence: [],
+  priority: "none",
+});
+
+/* ---------------------------------------------------
+   4. App Component
 ----------------------------------------------------*/
 
 const App: React.FC = () => {
+  const [activeTab, setActiveTab] = React.useState<"rca" | "toc">("rca");
+
   const [diagram, setDiagram] = React.useState<Diagram>(createInitialDiagram);
 
   // node selection (fishbone or RCA tree)
@@ -75,8 +112,18 @@ const App: React.FC = () => {
     Record<string, PriorityLevel>
   >({});
 
+  // ToC bundles (intervention design)
+  const [tocBundles, setTocBundles] = React.useState<Record<string, TocBundle>>(
+    {}
+  );
+  const [activeBundleId, setActiveBundleId] = React.useState<string | null>(
+    null
+  );
+  // Keep an explicit order for the toc bundles so we can reorder them in the UI
+  const [tocOrder, setTocOrder] = React.useState<string[]>([]);
+
   /* ---------------------------------------------------
-     Helpers
+     RCA Helpers
   ----------------------------------------------------*/
 
   const isCategory = (id: string | null): boolean => {
@@ -96,7 +143,7 @@ const App: React.FC = () => {
   };
 
   /* ---------------------------------------------------
-     Diagram Modification
+     Diagram Modification (RCA)
   ----------------------------------------------------*/
 
   const addCategory = () => {
@@ -139,6 +186,33 @@ const App: React.FC = () => {
     updateRoot((root) => renameNode(root, id, label || "Untitled"));
   };
 
+  const reorderCategories = (fromId: string, toId: string) => {
+    updateRoot((root) => {
+      const fromIdx = root.children.findIndex((cat) => cat.id === fromId);
+      const toIdx = root.children.findIndex((cat) => cat.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return root;
+      const newChildren = [...root.children];
+      [newChildren[fromIdx], newChildren[toIdx]] = [newChildren[toIdx], newChildren[fromIdx]];
+      return { ...root, children: newChildren };
+    });
+  };
+
+  const reorderCauses = (categoryId: string, fromId: string, toId: string) => {
+    updateRoot((root) => {
+      const category = root.children.find((cat) => cat.id === categoryId);
+      if (!category) return root;
+      const fromIdx = category.children.findIndex((cause) => cause.id === fromId);
+      const toIdx = category.children.findIndex((cause) => cause.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return root;
+      const newCauses = [...category.children];
+      [newCauses[fromIdx], newCauses[toIdx]] = [newCauses[toIdx], newCauses[fromIdx]];
+      const newChildren = root.children.map((cat) =>
+        cat.id === categoryId ? { ...cat, children: newCauses } : cat
+      );
+      return { ...root, children: newChildren };
+    });
+  };
+
   const insertFromBank = (templateId: string) => {
     if (!selectedNodeId) return;
     const t = templates.find((x) => x.id === templateId);
@@ -168,6 +242,31 @@ const App: React.FC = () => {
       : "none";
 
   /* ---------------------------------------------------
+     ToC Bundles (Intervention Design)
+  ----------------------------------------------------*/
+
+  const createNewBundle = () => {
+    const id = "toc_" + Math.random().toString(36).slice(2, 9);
+    const bundle = createEmptyBundle(id);
+    setTocBundles((prev) => ({ ...prev, [id]: bundle }));
+    setActiveBundleId(id);
+    setTocOrder((prev) => [...prev, id]);
+  };
+
+  const updateBundle = (id: string, fn: (b: TocBundle) => TocBundle) => {
+    setTocBundles((prev) => ({ ...prev, [id]: fn(prev[id]) }));
+  };
+
+  const reorderTocBundles = (fromIndex: number, toIndex: number) => {
+    setTocOrder((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  /* ---------------------------------------------------
      JSON Import Logic
   ----------------------------------------------------*/
 
@@ -185,6 +284,10 @@ const App: React.FC = () => {
         setDiagram(json.diagram);
         setNotesByNode(json.notesByNode || {});
         setPriorityByNode(json.priorityByNode || {});
+        setTocBundles(json.tocBundles || {});
+        setActiveBundleId(json.activeBundleId || null);
+        // initialize toc order from imported bundles (preserve order if present)
+        setTocOrder(json.tocOrder || Object.keys(json.tocBundles || {}));
         setSelectedNodeId(null);
         setFocusNodeId(null);
       } catch (err) {
@@ -192,6 +295,31 @@ const App: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleExportJSON = () => {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            diagram,
+            notesByNode,
+            priorityByNode,
+            tocBundles,
+            activeBundleId,
+          },
+          null,
+          2
+        ),
+      ],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${diagram.title}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   /* ---------------------------------------------------
@@ -224,77 +352,91 @@ const App: React.FC = () => {
 
         <button
           className="secondary-btn"
-          onClick={() => document.getElementById("import-json-input")?.click()}
+          onClick={() =>
+            document.getElementById("import-json-input")?.click()
+          }
         >
           Import JSON
         </button>
 
-        <button
-          className="secondary-btn"
-          onClick={() => {
-            const blob = new Blob(
-              [
-                JSON.stringify(
-                  { diagram, notesByNode, priorityByNode },
-                  null,
-                  2
-                ),
-              ],
-              { type: "application/json" }
-            );
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${diagram.title}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
+        <button className="secondary-btn" onClick={handleExportJSON}>
           Export JSON
         </button>
       </header>
 
-      {/* MAIN THREE-PANE LAYOUT */}
-      <main className="app-main">
-        <FishboneView
-          root={diagram.root}
-          selectedNodeId={selectedNodeId}
-          onSelect={handleSelectNode}
-          onAddCategory={addCategory}
-          onAddCause={addCause}
-          onLabelChange={changeLabel}
-          onDelete={deleteNodeById}
-          priorityByNode={priorityByNode}
-        />
+      {/* TAB STRIP */}
+      <div className="tab-strip">
+        <span
+          className={activeTab === "rca" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("rca")}
+        >
+          Root Cause Analysis
+        </span>
+        <span
+          className={activeTab === "toc" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("toc")}
+        >
+          Intervention Design
+        </span>
+      </div>
 
-        <RCATreeView
-          root={diagram.root}
-          focusNodeId={focusNodeId}
-          selectedNodeId={selectedNodeId}
-          onSelect={handleSelectNode}
-          onAddChild={addWhy}
-          onDelete={deleteNodeById}
-          onLabelChange={changeLabel}
-          priorityByNode={priorityByNode}
-        />
+      {/* MAIN LAYOUT */}
+      {activeTab === "rca" ? (
+        <>
+          <main className="app-main">
+            <FishboneView
+              root={diagram.root}
+              selectedNodeId={selectedNodeId}
+              onSelect={handleSelectNode}
+              onAddCategory={addCategory}
+              onAddCause={addCause}
+              onLabelChange={changeLabel}
+              onDelete={deleteNodeById}
+              priorityByNode={priorityByNode}
+              onReorderCategories={reorderCategories}
+              onReorderCauses={reorderCauses}
+            />
 
-        <NotesPane
-          root={diagram.root}
-          selectedNodeId={selectedNodeId}
-          noteText={currentNote}
-          onChangeNote={handleChangeNote}
-          priority={currentPriority}
-          onChangePriority={handleChangePriority}
-        />
-      </main>
+            <RCATreeView
+              root={diagram.root}
+              focusNodeId={focusNodeId}
+              selectedNodeId={selectedNodeId}
+              onSelect={handleSelectNode}
+              onAddChild={addWhy}
+              onDelete={deleteNodeById}
+              onLabelChange={changeLabel}
+              priorityByNode={priorityByNode}
+            />
 
-      {/* CAUSE BANK */}
-      <footer className="app-footer">
-        <CauseBank
-          templates={templates}
-          onInsertUnderSelected={insertFromBank}
+            <NotesPane
+              root={diagram.root}
+              selectedNodeId={selectedNodeId}
+              noteText={currentNote}
+              onChangeNote={handleChangeNote}
+              priority={currentPriority}
+              onChangePriority={handleChangePriority}
+            />
+          </main>
+
+          <footer className="app-footer">
+            <CauseBank
+              templates={templates}
+              onInsertUnderSelected={insertFromBank}
+            />
+          </footer>
+        </>
+      ) : (
+        <InterventionLayout
+          root={diagram.root}
+          tocBundles={tocBundles}
+          tocOrder={tocOrder}
+          reorderTocBundles={reorderTocBundles}
+          activeBundleId={activeBundleId}
+          setActiveBundleId={setActiveBundleId}
+          createNewBundle={createNewBundle}
+          updateBundle={updateBundle}
         />
-      </footer>
+      )}
     </div>
   );
 };

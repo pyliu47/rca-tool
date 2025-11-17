@@ -1,5 +1,9 @@
 /* src/index.css */
 
+/* ===========================
+   Base
+   =========================== */
+
 * {
   box-sizing: border-box;
 }
@@ -9,9 +13,7 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   background: #e5f0ff;
-  /* light blue instead of yellow-ish */
   color: #1e293b;
-  /* ink */
 }
 
 .app-root {
@@ -20,7 +22,9 @@ body {
   flex-direction: column;
 }
 
-/* ---------- Header ---------- */
+/* ===========================
+   Header
+   =========================== */
 
 .app-header {
   padding: 8px 12px;
@@ -30,10 +34,6 @@ body {
   border-bottom: none;
   background: #e5f0ff;
   /* match body */
-}
-
-.app-header>* {
-  /* empty - keep default flex behavior */
 }
 
 .title-input {
@@ -46,7 +46,8 @@ body {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-/* Buttons */
+/* Buttons (shared) */
+
 .secondary-btn,
 .small-btn {
   border-radius: 999px;
@@ -68,7 +69,20 @@ body {
   box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
 
-/* ---------- Main layout ---------- */
+/* tiny pill-style button */
+
+.tiny-btn {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* ===========================
+   RCA Main Layout (Fishbone / RCA / Notes)
+   =========================== */
 
 .app-main {
   flex: 1;
@@ -78,7 +92,8 @@ body {
   gap: 8px;
 }
 
-/* Panes become cards */
+/* Panes = cards */
+
 .pane {
   flex: 1;
   min-width: 0;
@@ -91,6 +106,7 @@ body {
 }
 
 /* header inside each pane */
+
 .pane-header {
   padding: 6px 12px;
   display: flex;
@@ -103,34 +119,45 @@ body {
   border-radius: 12px 12px 0 0;
 }
 
-.pane-title {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* body area where SVG should fill */
+/* Base: scrollable but scrollbars hidden */
 .pane-body {
   flex: 1;
   min-height: 0;
   padding: 6px;
   border-radius: 0 0 12px 12px;
+  overflow: auto;
+
+  /* Reserve scrollbar space at all times */
+  scrollbar-gutter: stable;
+
+  /* Make scrollbars invisible by default */
+  scrollbar-width: thin;
+}
+
+/* Hide scrollbar thumb */
+.pane-body {
+  scrollbar-color: transparent transparent;
+}
+
+/* WebKit/Chromium invisible scrollbar but keep gutter */
+.pane-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.pane-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pane-body::-webkit-scrollbar-thumb {
+  background: transparent;
 }
 
 .pane-body svg {
-  width: 100%;
-  height: 100%;
   display: block;
 }
 
-/* Stack panes vertically on very narrow screens */
-@media (max-width: 900px) {
-  .app-main {
-    flex-direction: column;
-  }
-}
-
-/* Fishbone + RCA Tree */
+/* Fishbone + RCA Tree panes */
 .pane-wide {
   flex: 3;
 }
@@ -140,7 +167,9 @@ body {
   flex: 2;
 }
 
-/* ---------- Footer / Cause Bank ---------- */
+/* ===========================
+   Footer / Cause Bank
+   =========================== */
 
 .app-footer {
   border-top: none;
@@ -148,14 +177,14 @@ body {
   padding: 0 8px 8px;
 }
 
-/* Cause bank as a small card (not a pill) */
+/* Cause bank as a small card */
+
 .bank {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   background: #ffffff;
   border-radius: 12px;
-  /* << changed from 999px */
   padding: 8px 10px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -186,6 +215,7 @@ body {
 }
 
 /* cause chips */
+
 .bank-item {
   border-radius: 999px;
   border: 1px solid #cbd5e1;
@@ -204,26 +234,768 @@ body {
   box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
 
-/* ---------- Notes textarea ---------- */
+/* ===========================
+   Notes textarea
+   =========================== */
 
 .notes-textarea {
   width: 100%;
   height: 100%;
   resize: none;
-  border-radius: 5px;
-  border: 1px solid #ffffff;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
   font-size: 13px;
   padding: 8px 10px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   box-sizing: border-box;
   background: #ffffff;
-  /* journal-like */
   line-height: 1.5;
 }
 
-.app-root {
-  height: 100vh;
+/* ===========================
+   Tabs: RCA vs Intervention
+   =========================== */
+
+.tab-strip {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 12px 0 12px;
+  border-bottom: 1px solid #dbeafe;
+  background: #e5f0ff;
+  /* soft blue */
+  font-size: 14px;
+}
+
+.tab {
+  position: relative;
+  padding: 6px 0;
+  cursor: pointer;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.tab+.tab {
+  margin-left: 4px;
+}
+
+.tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.tab:hover {
+  color: #1d4ed8;
+}
+
+.tab.active {
+  color: #1d4ed8;
+}
+
+.tab.active::after {
+  background: #1d4ed8;
+  /* blue underline */
+}
+
+/* ===========================
+   Intervention Design Layout
+   =========================== */
+
+.intervention-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  padding: 8px 8px 0;
+  gap: 8px;
+}
+
+/* Left sidebar: interventions + causes */
+
+.intervention-sidebar {
+  flex: 0 0 270px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+/* Right pane: ToC builder */
+
+.intervention-workspace {
+  flex: 1;
+  min-width: 0;
+  background: #f9fbff;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  padding: 12px 14px;
+  overflow: auto;
+}
+
+/* When no bundle is selected */
+
+.no-bundle-selected {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* --- Sidebar inner cards --- */
+
+.cause-pane {
+  background: #f9fbff;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Interventions list */
+
+.intervention-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.intervention-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.intervention-item {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #eef2ff;
+  border: 1px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.intervention-item:hover {
+  background: #e0e7ff;
+}
+
+.intervention-item.active {
+  background: #dbeafe;
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+}
+
+/* Causes section */
+
+.cause-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* allow scrolling when there are many causes, similar to the interventions list */
+  overflow-y: auto;
+  /* limit height so the sidebar doesn't grow indefinitely; leave room for the header and interventions list */
+  max-height: calc(100vh - 260px);
+  padding: 8px;
+  /* avoid clipping scrollbar */
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.cause-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.cause-header .count {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.cause-category-block {
+  margin-bottom: 4px;
+}
+
+.category-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.cause-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #111827;
+}
+
+/* ===========================
+   ToC Builder Pane
+   =========================== */
+
+.toc-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.toc-section {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+}
+
+.toc-section label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+
+.toc-section .input-line {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.toc-section .textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  font-size: 14px !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  margin-bottom: 8px;
+  min-height: 64px;
+  resize: vertical;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+/* ===========================
+   Focal causes
+   =========================== */
+
+.focal-causes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.focal-causes-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.focal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.focal-card {
+  background: #f4f7ff;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  padding: 8px 10px;
+}
+
+.focal-cause-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.focal-empty {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.focal-cause-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+}
+
+.focal-category {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: normal;
+}
+
+.underlying-list {
+  margin-left: 10px;
+  margin-top: 2px;
+}
+
+.underlying-item {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* ===========================
+   Logic Chain & Assumptions
+   =========================== */
+
+.logic-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.logic-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.logic-col {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #f9fbff;
+  /* light blue */
+  border: 1px solid #e5e7eb;
+  /* faint border */
+}
+
+.logic-col-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #374151;
+}
+
+/* Treat *-pill as a simple container (for drag-drop, spacing, etc.) */
+.logic-pill,
+.assumption-pill,
+.activity-pill {
+  margin-bottom: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Card styling for inputs/outputs/outcomes */
+.logic-pill {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+/* Card styling for activities */
+.activity-pill {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+/* Actual pill row for inputs/outputs/outcomes */
+.logic-item,
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.logic-item input,
+.activity-item input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  outline: none;
+  word-wrap: break-word;
+  white-space: normal;
+  min-height: 20px;
+  line-height: 1.4;
+}
+
+/* delete buttons in the row */
+.logic-item button,
+.activity-item button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  color: #6b7280;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Assumptions pills use the same row style */
+.assumption-pill {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.assumption-pill .logic-item {
+  margin-bottom: 0;
+}
+
+/* small label above assumptions in each column */
+.assumption-subtitle {
+  margin-top: 6px;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* ===========================
+   Activities & Actor Chips
+   =========================== */
+
+/* top row inside activity pill (name + delete) */
+
+.activity-main-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.activity-main-row input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  outline: none;
+}
+
+.activity-main-row button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  color: #6b7280;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* actor area inside activity pill */
+
+.activity-actor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: #374151;
+  margin-top: 6px;
+}
+
+.activity-actor-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.actor-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.actor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  font-size: 12px;
+  color: #1e40af;
+}
+
+.actor-chip button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: #1e40af;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Add actor UI controls */
+.activity-actor-add {
+  margin-top: 6px;
+}
+
+.actor-add-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.actor-select-row,
+.actor-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  /* keep controls within card bounds */
+}
+
+
+/* compact circular icon buttons used in actor add UI */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  /* fixed-size buttons */
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+.icon-btn:hover {
+  background: #f1f5f9;
+}
+
+/* make sure the actor input takes available space and stays compact */
+.actor-input-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* allow shrinking in flex */
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+  font-size: 12px;
+  outline: none;
+  box-shadow: none;
+}
+
+.actor-select-row select {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: #ffffff;
+}
+
+.actor-select-row select {
+  padding: 3px 6px;
+}
+
+.actor-select-row button,
+.actor-input-row button {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+/* add-actor mini row */
+
+.activity-actor-add {
+  display: flex;
+  gap: 4px;
+}
+
+.activity-actor-add input {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+/* ===========================
+   Mobile / small screens
+   =========================== */
+
+@media (max-width: 900px) {
+
+  /* allow the app to grow taller than the viewport */
+  .app-root {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .app-main {
+    flex-direction: column;
+    padding: 8px;
+  }
+
+  .pane {
+    flex: 0 0 auto;
+    height: 60vh;
+    /* Fishbone & RCA get good vertical space */
+  }
+
+  .pane-narrow {
+    height: 40vh;
+    /* Notes pane a bit shorter */
+  }
+
+  .intervention-main {
+    flex-direction: column;
+  }
+
+  .intervention-sidebar {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+}
+
+/* Dragging visual for logic-chain pills */
+.pill-dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+/* ===========================
+   Reusable Card component styles
+   =========================== */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  /* allow title to wrap to multiple lines */
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-weight: 400;
+  /* paragraph-style weight, not a heading */
+  font-size: 13px;
+  color: #111827;
+  cursor: text;
+  flex: 1 1 auto;
+  /* allow the title to take remaining space and wrap */
+  white-space: normal;
+  /* allow wrapping */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.card-title.placeholder {
+  color: #9ca3af;
+  font-style: normal;
+}
+
+.card-title textarea,
+.card-title input {
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 36px;
+}
+
+.card-header-right {
+  margin-left: 8px;
+}
+
+/* make the small delete button in card headers look like the previous inline grey X */
+.card-header-right button {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.card-header-right button:hover {
+  color: #374151;
+}
+
+.card-body {
+  padding-top: 4px;
+}
+
+.activity-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* When Card is used inside another bordered container (logic-pill / activity-pill)
+   we want the outer container's border to be visible and the Card itself to be
+   borderless. Use a more specific selector to override .card defaults. */
+.card.activity-card,
+.card.logic-card {
+  background: transparent;
+  border: none;
+  padding: 0;
 }
