@@ -8,7 +8,6 @@ interface Props {
     root: RCANode;
     focusNodeId: string | null; // category root
     selectedNodeId: string | null;
-    onSelect: (id: string) => void;
     onAddChild: (parentId: string) => void;
     onDelete: (id: string) => void;
     onLabelChange: (id: string, label: string) => void;
@@ -57,7 +56,6 @@ export const RCATreeView: React.FC<Props> = ({
     root,
     focusNodeId,
     selectedNodeId,
-    onSelect,
     onAddChild,
     onDelete,
     onLabelChange,
