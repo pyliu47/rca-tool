@@ -2,6 +2,7 @@
 import React from "react";
 import type { RCANode, PriorityLevel } from "./types";
 import { findNode } from "./utils";
+import { ClipboardList } from "lucide-react";
 
 interface Props {
     root: RCANode;
@@ -26,7 +27,10 @@ export const NotesPane: React.FC<Props> = ({
     return (
         <div className="pane pane-narrow">
             <div className="pane-header">
-                <span className="pane-title">Changelog</span>
+                <span className="pane-title">
+                    <ClipboardList size={16} />
+                    Changelog
+                </span>
                 {node && (
                     <span style={{ fontSize: 11, color: "#4b5563" }}>
                         For: <strong>{node.label}</strong>

@@ -2,7 +2,7 @@
 import React from "react";
 import type { RCANode, PriorityLevel } from "./types";
 import { findNode } from "./utils";
-import { Lock, Unlock, ZoomIn, ZoomOut } from "lucide-react";
+import { Lock, Unlock, ZoomIn, ZoomOut, Trees } from "lucide-react";
 
 interface Props {
     root: RCANode;
@@ -85,7 +85,10 @@ export const RCATreeView: React.FC<Props> = ({
         return (
             <div className="pane pane-wide">
                 <div className="pane-header">
-                    <span className="pane-title">RCA Tree</span>
+                    <span className="pane-title">
+                        <Trees size={16} />
+                        RCA Tree
+                    </span>
                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <button
                             className="small-btn"
@@ -172,6 +175,7 @@ export const RCATreeView: React.FC<Props> = ({
         <div className="pane pane-wide">
             <div className="pane-header">
                 <span className="pane-title">
+                    <Trees size={16} />
                     RCA Tree{" "}
                     {treeRoot.id !== focusNode.id
                         ? `(Cause: ${treeRoot.label})`

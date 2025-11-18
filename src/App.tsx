@@ -67,22 +67,124 @@ const createEmptyBundle = (id: string): TocBundle => ({
   name: "",
   description: "",
   causeIds: [],
-  inputs: [],
   activities: [],
-  outputs: [],
   outcomes: [],
-  assumptions: {
-    inputs: [],
-    activities: [],
-    outputs: [],
-    outcomes: [],
-  },
   risks: "",
   gender: "none",
   genderNotes: "",
   actors: [],
+  dataSources: [],
   evidence: [],
   priority: "none",
+});
+
+const createDefaultColdChainBundle = (id: string, coldChainCauseId: string): TocBundle => ({
+  id,
+  name: "Improve Cold Chain Management",
+  description: "A comprehensive intervention to address cold chain stockouts through improved inventory management and equipment maintenance.",
+  causeIds: coldChainCauseId ? [coldChainCauseId] : [],
+  activities: [
+    {
+      id: "act-1",
+      label: "Conduct cold chain audit and gap analysis",
+      description: "Perform comprehensive audit to identify gaps in cold chain operations",
+      actors: ["Supply Chain Manager", "Facility In-Charge"],
+      inputIds: [],
+      outputIds: [],
+      assumptionIds: [],
+      inputs: [
+        { id: "in-1-1", label: "Audit tools and templates", notes: "" },
+        { id: "in-1-2", label: "Staff time", notes: "" },
+      ],
+      outputs: [
+        { id: "out-1-1", label: "Audit report with findings", notes: "" },
+      ],
+      assumptions: [
+        { id: "as-1-1", label: "Staff availability to participate in audit" },
+      ],
+    },
+    {
+      id: "act-2",
+      label: "Implement preventive maintenance schedule",
+      description: "Establish and enforce regular maintenance schedule for equipment",
+      actors: ["Equipment Technician", "Facility Staff"],
+      inputIds: [],
+      outputIds: [],
+      assumptionIds: [],
+      inputs: [
+        { id: "in-2-1", label: "Equipment manuals", notes: "" },
+        { id: "in-2-2", label: "Maintenance supplies", notes: "" },
+      ],
+      outputs: [
+        { id: "out-2-1", label: "Maintenance schedule and log system", notes: "" },
+      ],
+      assumptions: [
+        { id: "as-2-1", label: "Technicians will consistently follow the maintenance schedule" },
+      ],
+    },
+    {
+      id: "act-3",
+      label: "Train staff on inventory management",
+      description: "Conduct training sessions for facility staff",
+      actors: ["Health Officer", "Facility Staff"],
+      inputIds: [],
+      outputIds: [],
+      assumptionIds: [],
+      inputs: [
+        { id: "in-3-1", label: "Training curriculum", notes: "" },
+      ],
+      outputs: [
+        { id: "out-3-1", label: "Staff trained", notes: "" },
+      ],
+      assumptions: [
+        { id: "as-3-1", label: "Staff will apply training knowledge" },
+      ],
+    },
+  ],
+  outcomes: [
+    {
+      id: "out-1",
+      label: "Improved vaccine availability",
+      description: "",
+      tier: 3,
+      contributingActivityIds: ["act-1"],
+      indicators: [
+        { id: "ind-1-1", label: "% of facilities with adequate stock", type: "quantitative", sourceIds: ["ds-0", "ds-1"] },
+      ],
+    },
+    {
+      id: "out-2",
+      label: "Reduced product wastage",
+      description: "",
+      tier: 3,
+      contributingActivityIds: ["act-2"],
+      indicators: [
+        { id: "ind-2-1", label: "Vaccine waste reduction rate", type: "quantitative", sourceIds: ["ds-2"] },
+      ],
+    },
+    {
+      id: "out-3",
+      label: "Staff confidence in cold chain management",
+      description: "",
+      tier: 2,
+      contributingActivityIds: ["act-3"],
+      indicators: [
+        { id: "ind-3-1", label: "Staff confidence level", type: "qualitative", sourceIds: ["ds-3"] },
+      ],
+    },
+  ],
+  risks: "Staff resistance to new systems; Supply chain disruptions; Budget constraints",
+  gender: "none",
+  genderNotes: "",
+  actors: ["Supply Chain Manager", "Facility In-Charge", "Equipment Technician", "Facility Staff", "Health Officer"],
+  dataSources: [
+    "Facility inventory reports",
+    "Monthly facility audits",
+    "Facility records",
+    "Staff survey responses",
+  ],
+  evidence: [],
+  priority: "high",
 });
 
 /* ---------------------------------------------------
@@ -90,7 +192,8 @@ const createEmptyBundle = (id: string): TocBundle => ({
 ----------------------------------------------------*/
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState<"rca" | "toc">("rca");
+  // Active tab state
+  const [activeTab, setActiveTab] = React.useState<"rca" | "toc">("toc");
 
   const [diagram, setDiagram] = React.useState<Diagram>(createInitialDiagram);
 
@@ -113,14 +216,26 @@ const App: React.FC = () => {
   >({});
 
   // ToC bundles (intervention design)
-  const [tocBundles, setTocBundles] = React.useState<Record<string, TocBundle>>(
-    {}
-  );
+  // Initialize with default supply chain intervention
+  const defaultColdChainId = "bundle-cold-chain";
+
+  // Get the cold chain cause ID from the current diagram
+  const getColdChainCauseId = (): string => {
+    const supplyCategory = diagram.root.children.find(c => c.label === "Supply");
+    const supplyCause = supplyCategory?.children.find(c => c.label === "Cold chain stockouts");
+    return supplyCause?.id || "";
+  };
+
+  const [tocBundles, setTocBundles] = React.useState<Record<string, TocBundle>>(() => {
+    return {
+      [defaultColdChainId]: createDefaultColdChainBundle(defaultColdChainId, getColdChainCauseId()),
+    };
+  });
   const [activeBundleId, setActiveBundleId] = React.useState<string | null>(
-    null
+    defaultColdChainId
   );
   // Keep an explicit order for the toc bundles so we can reorder them in the UI
-  const [tocOrder, setTocOrder] = React.useState<string[]>([]);
+  const [tocOrder, setTocOrder] = React.useState<string[]>([defaultColdChainId]);
 
   /* ---------------------------------------------------
      RCA Helpers

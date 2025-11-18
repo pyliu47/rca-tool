@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { CauseTemplate } from "./types";
+import { Database } from "lucide-react";
 
 interface Props {
     templates: CauseTemplate[];
@@ -21,7 +22,10 @@ export const CauseBank: React.FC<Props> = ({
     return (
         <div className="bank">
             <div className="bank-header">
-                <span className="pane-title">Cause Bank</span>
+                <span className="pane-title">
+                    <Database size={16} />
+                    Cause Bank
+                </span>
                 <input
                     className="bank-search"
                     placeholder="Search…"

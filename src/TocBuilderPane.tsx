@@ -1,6 +1,7 @@
 // src/TocBuilderPane.tsx
 import React from "react";
 import type { RCANode } from "./types";
+import { BookOpen } from "lucide-react";
 
 /* Local copies of the ToC types (structural match with App.tsx) */
 
@@ -76,7 +77,10 @@ export const TocBuilderPane: React.FC<TocBuilderPaneProps> = ({
         return (
             <div className="pane" style={{ flex: 4, minWidth: 0 }}>
                 <div className="pane-header">
-                    <span className="pane-title">Intervention Design</span>
+                    <span className="pane-title">
+                        <BookOpen size={16} />
+                        Intervention Design
+                    </span>
                 </div>
                 <div className="pane-body">
                     <div
@@ -107,7 +111,10 @@ export const TocBuilderPane: React.FC<TocBuilderPaneProps> = ({
         return (
             <div className="pane" style={{ flex: 4, minWidth: 0 }}>
                 <div className="pane-header">
-                    <span className="pane-title">Intervention Design</span>
+                    <span className="pane-title">
+                        <BookOpen size={16} />
+                        Intervention Design
+                    </span>
                 </div>
                 <div className="pane-body">
                     <div style={{ padding: 12, fontSize: 14, color: "#64748b" }}>
@@ -287,7 +294,10 @@ export const TocBuilderPane: React.FC<TocBuilderPaneProps> = ({
     return (
         <div className="pane" style={{ flex: 4, minWidth: 0 }}>
             <div className="pane-header">
-                <span className="pane-title">Intervention Design</span>
+                <span className="pane-title">
+                    <BookOpen size={16} />
+                    Intervention Design
+                </span>
             </div>
             <div className="pane-body" style={{ padding: 8, overflowY: "auto" }}>
                 {/* Bundle name + description */}

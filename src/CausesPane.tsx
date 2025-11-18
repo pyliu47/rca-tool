@@ -1,6 +1,7 @@
 // src/CausesPane.tsx
 import React from "react";
 import type { RCANode } from "./types";
+import { AlertCircle } from "lucide-react";
 
 interface CausesPaneProps {
     root: RCANode;
@@ -20,7 +21,10 @@ export const CausesPane: React.FC<CausesPaneProps> = ({
     return (
         <div className="pane" style={{ flex: 1, minWidth: 0 }}>
             <div className="pane-header">
-                <span className="pane-title">Causes</span>
+                <span className="pane-title">
+                    <AlertCircle size={16} />
+                    Causes
+                </span>
                 {selectedCauseIds.length > 0 && (
                     <span style={{ fontSize: 11, color: "#64748b" }}>
                         {selectedCauseIds.length} selected

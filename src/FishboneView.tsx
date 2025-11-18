@@ -1,7 +1,7 @@
 // src/FishboneView.tsx
 import React from "react";
 import type { RCANode, PriorityLevel } from "./types";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, GitBranch } from "lucide-react";
 
 interface Props {
     root: RCANode;
@@ -175,7 +175,10 @@ export const FishboneView: React.FC<Props> = ({
     return (
         <div className="pane pane-wide">
             <div className="pane-header">
-                <span className="pane-title">Fishbone</span>
+                <span className="pane-title">
+                    <GitBranch size={16} />
+                    Fishbone
+                </span>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     {/* Lock toggle */}
                     <button
