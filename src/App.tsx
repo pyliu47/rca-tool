@@ -193,7 +193,7 @@ const createDefaultColdChainBundle = (id: string, coldChainCauseId: string): Toc
 
 const App: React.FC = () => {
   // Active tab state
-  const [activeTab, setActiveTab] = React.useState<"rca" | "toc">("toc");
+  const [activeTab, setActiveTab] = React.useState<"rca" | "toc">("rca");
 
   const [diagram, setDiagram] = React.useState<Diagram>(createInitialDiagram);
 
