@@ -1,6 +1,6 @@
 // src/FishboneView.tsx
 import React from "react";
-import type { RCANode, PriorityLevel } from "./types";
+import type { RCANode, PriorityLevel, Persona } from "./types";
 import { Lock, Unlock, GitBranch } from "lucide-react";
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
     priorityByNode: Record<string, PriorityLevel>;
     onReorderCategories: (fromId: string, toId: string) => void;
     onReorderCauses: (categoryId: string, fromId: string, toId: string) => void;
+    personas: Persona[];
 }
 
 export const FishboneView: React.FC<Props> = ({
@@ -27,6 +28,7 @@ export const FishboneView: React.FC<Props> = ({
     priorityByNode,
     onReorderCategories,
     onReorderCauses,
+    personas,
 }) => {
     const [locked, setLocked] = React.useState(false);
     const [zoom, setZoom] = React.useState(1);
@@ -336,6 +338,42 @@ export const FishboneView: React.FC<Props> = ({
                                     onChange={(v) => onLabelChange(cat.id, v)}
                                 />
 
+                                {/* Persona dots - bottom right of category box, rightmost inside border */}
+                                {(cat.personaIds || []).length > 0 && (
+                                    <foreignObject
+                                        x={catX + 35}
+                                        y={adjustedCatY + catBoxHalfHeight - 6}
+                                        width={35}
+                                        height={8}
+                                    >
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                gap: "2px",
+                                                alignItems: "center",
+                                                justifyContent: "flex-end",
+                                                width: "100%",
+                                            }}
+                                        >
+                                            {personas
+                                                .filter((p) => cat.personaIds?.includes(p.id))
+                                                .map((p) => (
+                                                    <div
+                                                        key={p.id}
+                                                        style={{
+                                                            width: "6px",
+                                                            height: "6px",
+                                                            borderRadius: "50%",
+                                                            backgroundColor: p.color || "#0ea5e9",
+                                                            border: "0.8px solid #000000",
+                                                        }}
+                                                        title={p.name}
+                                                    />
+                                                ))}
+                                        </div>
+                                    </foreignObject>
+                                )}
+
                                 {/* + Cause and delete controls - only show when selected, hidden when locked */}
                                 {!locked && selected && (
                                     <>
@@ -482,6 +520,42 @@ export const FishboneView: React.FC<Props> = ({
                                                         onLabelChange(cause.id, v)
                                                     }
                                                 />
+
+                                                {/* Persona dots - bottom right of cause box, rightmost inside border */}
+                                                {(cause.personaIds || []).length > 0 && (
+                                                    <foreignObject
+                                                        x={causeX + 55}
+                                                        y={causeY + causeBoxHalfHeight - 6}
+                                                        width={28}
+                                                        height={8}
+                                                    >
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                gap: "1.5px",
+                                                                alignItems: "center",
+                                                                justifyContent: "flex-end",
+                                                                width: "100%",
+                                                            }}
+                                                        >
+                                                            {personas
+                                                                .filter((p) => cause.personaIds?.includes(p.id))
+                                                                .map((p) => (
+                                                                    <div
+                                                                        key={p.id}
+                                                                        style={{
+                                                                            width: "6px",
+                                                                            height: "6px",
+                                                                            borderRadius: "50%",
+                                                                            backgroundColor: p.color || "#0ea5e9",
+                                                                            border: "0.5px solid rgba(0,0,0,0.1)",
+                                                                        }}
+                                                                        title={p.name}
+                                                                    />
+                                                                ))}
+                                                        </div>
+                                                    </foreignObject>
+                                                )}
                                                 {/* Delete button - only show when selected, hidden when locked */}
                                                 {!locked && sel && (
                                                     <text

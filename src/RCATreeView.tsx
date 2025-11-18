@@ -1,6 +1,6 @@
 // src/RCATreeView.tsx
 import React from "react";
-import type { RCANode, PriorityLevel } from "./types";
+import type { RCANode, PriorityLevel, Persona } from "./types";
 import { findNode } from "./utils";
 import { Lock, Unlock, ZoomIn, ZoomOut, Trees } from "lucide-react";
 
@@ -11,7 +11,12 @@ interface Props {
     onAddChild: (parentId: string) => void;
     onDelete: (id: string) => void;
     onLabelChange: (id: string, label: string) => void;
+    onSelect: (id: string) => void;
     priorityByNode: Record<string, PriorityLevel>;
+    personas: Persona[];
+    onUpdateNodePersonas: (nodeId: string, personaIds: string[]) => void;
+    onUpdatePersonas: (personas: Persona[]) => void;
+    personaColors?: string[];
 }
 
 interface PositionedNode {
@@ -59,7 +64,25 @@ export const RCATreeView: React.FC<Props> = ({
     onAddChild,
     onDelete,
     onLabelChange,
+    onSelect,
     priorityByNode,
+    personas,
+    onUpdateNodePersonas,
+    onUpdatePersonas,
+    personaColors = [
+        "#fce7f3", // pink
+        "#dbeafe", // blue
+        "#dcfce7", // green
+        "#fef3c7", // yellow
+        "#e9d5ff", // purple
+        "#fed7aa", // orange
+        "#cffafe", // cyan
+        "#f5d4d4", // red-ish
+        "#dbeafe", // light blue
+        "#fce7f3", // light pink
+        "#d1fae5", // teal
+        "#fef08a", // lime
+    ],
 }) => {
     const minLogicalWidth = 400; // Smaller initial width so it's compact
     const cardWidth = 160;
@@ -67,14 +90,9 @@ export const RCATreeView: React.FC<Props> = ({
 
     const [locked, setLocked] = React.useState(false);
     const [scale, setScale] = React.useState(1);
-    const [fishboneRoot, setFishboneRoot] = React.useState<string | null>(null);
-    const [internalSelection, setInternalSelection] =
-        React.useState<string | null>(null);
-
-    React.useEffect(() => {
-        // Update fishboneRoot when selectedNodeId changes
-        setFishboneRoot(selectedNodeId);
-    }, [selectedNodeId]);
+    const [personaDropdownOpen, setPersonaDropdownOpen] = React.useState<string | null>(null);
+    const [personaDraft, setPersonaDraft] = React.useState("");
+    const [addingNewPersona, setAddingNewPersona] = React.useState(false);
 
     const focusNode =
         focusNodeId && focusNodeId !== root.id ? findNode(root, focusNodeId) : null;
@@ -119,15 +137,8 @@ export const RCATreeView: React.FC<Props> = ({
 
     /* ---------- Layout ---------- */
 
-    // Determine root: use fishboneRoot (Fishbone selection) or focusNode (category)
+    // Determine root: use focusNode (category selected in fishbone or tree)
     let treeRoot = focusNode;
-
-    if (fishboneRoot && fishboneRoot !== root.id) {
-        const node = findNode(root, fishboneRoot);
-        if (node) {
-            treeRoot = node;
-        }
-    }
 
     const levelCounts = getNodeCountsByLevel(treeRoot);
     const maxNodesAtAnyLevel = Math.max(...levelCounts);
@@ -156,7 +167,7 @@ export const RCATreeView: React.FC<Props> = ({
     });
 
     // Determine final logical width (compact if fits, expanded if needed)
-    const contentWidth = maxX - minX + 50; // Reduced padding since offset will center
+    const contentWidth = maxX - minX + 80; // Add extra padding for nodes and spacing
     const logicalWidth = Math.max(minLogicalWidth, contentWidth);
     const logicalHeight = Math.max(400, maxY + 100);
 
@@ -177,9 +188,11 @@ export const RCATreeView: React.FC<Props> = ({
                 <span className="pane-title">
                     <Trees size={16} />
                     RCA Tree{" "}
-                    {treeRoot.id !== focusNode.id
-                        ? `(Cause: ${treeRoot.label})`
-                        : `(Category: ${focusNode.label})`}
+                    {(() => {
+                        const isCategory = root.children.some((child) => child.id === treeRoot.id);
+                        const label = isCategory ? "Category" : "Cause";
+                        return `(${label}: ${treeRoot.label})`;
+                    })()}
                 </span>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <button
@@ -206,13 +219,74 @@ export const RCATreeView: React.FC<Props> = ({
                 </div>
             </div>
 
-            <div className="pane-body" style={{ overflow: "auto" }}>
+            <div className="pane-body" style={{ overflow: "auto", position: "relative" }}>
+                {/* Persona Legend - bottom right corner of pane, floating over canvas */}
+                {(() => {
+                    // Collect all persona IDs used in the tree
+                    const usedPersonaIds = new Set<string>();
+                    const collectPersonaIds = (node: RCANode) => {
+                        if (node.personaIds) {
+                            node.personaIds.forEach((id) => usedPersonaIds.add(id));
+                        }
+                        node.children.forEach(collectPersonaIds);
+                    };
+                    collectPersonaIds(treeRoot);
+
+                    const usedPersonas = personas.filter((p) => usedPersonaIds.has(p.id));
+
+                    return usedPersonas.length > 0 ? (
+                        <div
+                            style={{
+                                position: "absolute",
+                                bottom: "80px",
+                                right: "12px",
+                                backgroundColor: "#ffffff",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: "8px",
+                                padding: "8px 12px",
+                                zIndex: 10,
+                                maxWidth: "200px",
+                                fontSize: "12px",
+                                pointerEvents: "auto",
+                                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.12)",
+                            }}
+                        >
+                            <div style={{ fontWeight: 600, marginBottom: "6px", color: "#334155" }}>
+                                Personas
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {usedPersonas.map((p) => (
+                                    <div
+                                        key={p.id}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "6px",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: "8px",
+                                                height: "8px",
+                                                borderRadius: "50%",
+                                                backgroundColor: p.color || "#dbeafe",
+                                                border: "0.8px solid #000000",
+                                                flexShrink: 0,
+                                            }}
+                                        />
+                                        <span style={{ color: "#475569" }}>{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null;
+                })()}
                 {/* Inner canvas sized to the diagram; keeps scrollbars aligned to SVG */}
                 <div
                     style={{
                         position: "relative",
-                        width: `${logicalWidth}px`,
-                        minHeight: logicalHeight,
+                        width: `${logicalWidth * scale}px`,
+                        minHeight: `${logicalHeight * scale}px`,
                         margin: "0 auto",
                     }}
                 >
@@ -222,17 +296,11 @@ export const RCATreeView: React.FC<Props> = ({
                             background: "white",
                             borderRadius: 8,
                             display: "block",
-                            width: "100%",
-                            height: `${logicalHeight}px`,
+                            width: `${logicalWidth * scale}px`,
+                            height: `${logicalHeight * scale}px`,
                         }}
                     >
-                        <g
-                            transform={`
-                translate(${logicalWidth / 2}, ${logicalHeight / 2})
-                scale(${scale})
-                translate(-${logicalWidth / 2}, -${logicalHeight / 2})
-              `}
-                        >
+                        <g>
                             {/* Edges */}
                             {allPositioned.map((p) =>
                                 p.node.children.map((child) => {
@@ -261,11 +329,11 @@ export const RCATreeView: React.FC<Props> = ({
                             {allPositioned.map((p) => {
                                 const nodeWidth = cardWidth;
                                 const nodeHeight = getCardHeight(p.node.label);
-                                const isSelected = p.node.id === internalSelection;
+                                const isSelected = p.node.id === selectedNodeId;
                                 const isRoot = p.node.id === focusNode.id;
                                 const priority = priorityByNode[p.node.id];
 
-                                const base = getNodeColors(priority, isRoot);
+                                const base = getNodeColors(priority);
                                 const stroke = isSelected ? "#3a7dff" : base.stroke;
                                 const strokeWidth = isSelected ? 2.4 : 1.4;
 
@@ -281,7 +349,7 @@ export const RCATreeView: React.FC<Props> = ({
                                             fill={base.fill}
                                             stroke={stroke}
                                             strokeWidth={strokeWidth}
-                                            onClick={() => setInternalSelection(p.node.id)}
+                                            onClick={() => onSelect(p.node.id)}
                                         />
 
                                         <EditableTextNode
@@ -291,7 +359,7 @@ export const RCATreeView: React.FC<Props> = ({
                                             boxHeight={nodeHeight - 8}
                                             value={p.node.label}
                                             disabled={locked}
-                                            onSelect={() => setInternalSelection(p.node.id)}
+                                            onSelect={() => onSelect(p.node.id)}
                                             onChange={(v) => onLabelChange(p.node.id, v)}
                                         />
 
@@ -323,6 +391,237 @@ export const RCATreeView: React.FC<Props> = ({
                                             >
                                                 ✕
                                             </text>
+                                        )}
+
+                                        {/* Persona indicator dots - bottom right corner with dropdown */}
+                                        {(p.node.personaIds || []).length > 0 && (
+                                            <foreignObject
+                                                x={p.x + nodeWidth / 2 - 35}
+                                                y={p.y + nodeHeight / 2 - 10}
+                                                width={32}
+                                                height={14}
+                                                style={{ pointerEvents: locked ? "none" : "auto" }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        gap: "3px",
+                                                        alignItems: "center",
+                                                        justifyContent: "flex-end",
+                                                        width: "100%",
+                                                        cursor: locked ? "default" : "pointer",
+                                                        position: "relative",
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (!locked) {
+                                                            e.stopPropagation();
+                                                            setPersonaDropdownOpen(
+                                                                personaDropdownOpen === p.node.id ? null : p.node.id
+                                                            );
+                                                            setAddingNewPersona(false);
+                                                            setPersonaDraft("");
+                                                        }
+                                                    }}
+                                                    title="Click to manage personas for this cause"
+                                                >
+                                                    {personas
+                                                        .filter((ps) => p.node.personaIds?.includes(ps.id))
+                                                        .map((ps) => (
+                                                            <div
+                                                                key={ps.id}
+                                                                style={{
+                                                                    width: "7px",
+                                                                    height: "7px",
+                                                                    borderRadius: "50%",
+                                                                    backgroundColor: ps.color || "#dbeafe",
+                                                                    border: "0.8px solid #000000",
+                                                                }}
+                                                                title={ps.name}
+                                                            />
+                                                        ))}
+                                                    {personaDropdownOpen === p.node.id && (
+                                                        <div
+                                                            style={{
+                                                                position: "absolute",
+                                                                bottom: "100%",
+                                                                right: 0,
+                                                                marginBottom: "8px",
+                                                                backgroundColor: "#ffffff",
+                                                                border: "1px solid #e5e7eb",
+                                                                borderRadius: "6px",
+                                                                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                                                                zIndex: 20,
+                                                                maxHeight: "200px",
+                                                                overflowY: "auto",
+                                                                minWidth: "180px",
+                                                                pointerEvents: "auto",
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {addingNewPersona ? (
+                                                                <div
+                                                                    style={{
+                                                                        padding: "8px 12px",
+                                                                        borderBottom: "1px solid #e5e7eb",
+                                                                        display: "flex",
+                                                                        gap: "4px",
+                                                                    }}
+                                                                >
+                                                                    <input
+                                                                        autoFocus
+                                                                        type="text"
+                                                                        placeholder="Persona name..."
+                                                                        value={personaDraft}
+                                                                        onChange={(e) => setPersonaDraft(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") {
+                                                                                e.preventDefault();
+                                                                                if (personaDraft.trim()) {
+                                                                                    const colorIndex = personas.length % personaColors.length;
+                                                                                    const newPersona: Persona = {
+                                                                                        id: `p${Date.now()}`,
+                                                                                        name: personaDraft.trim(),
+                                                                                        color: personaColors[colorIndex],
+                                                                                    };
+                                                                                    onUpdatePersonas([...personas, newPersona]);
+                                                                                    onUpdateNodePersonas(p.node.id, [...(p.node.personaIds || []), newPersona.id]);
+                                                                                    setPersonaDraft("");
+                                                                                    setAddingNewPersona(false);
+                                                                                    setPersonaDropdownOpen(null);
+                                                                                }
+                                                                            } else if (e.key === "Escape") {
+                                                                                setAddingNewPersona(false);
+                                                                                setPersonaDraft("");
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            fontSize: "11px",
+                                                                            padding: "4px 6px",
+                                                                            border: "1px solid #cbd5e1",
+                                                                            borderRadius: "4px",
+                                                                            flex: 1,
+                                                                            outline: "none",
+                                                                            background: "#ffffff",
+                                                                        }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (personaDraft.trim()) {
+                                                                                const colorIndex = personas.length % personaColors.length;
+                                                                                const newPersona: Persona = {
+                                                                                    id: `p${Date.now()}`,
+                                                                                    name: personaDraft.trim(),
+                                                                                    color: personaColors[colorIndex],
+                                                                                };
+                                                                                onUpdatePersonas([...personas, newPersona]);
+                                                                                onUpdateNodePersonas(p.node.id, [...(p.node.personaIds || []), newPersona.id]);
+                                                                                setPersonaDraft("");
+                                                                                setAddingNewPersona(false);
+                                                                                setPersonaDropdownOpen(null);
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            fontSize: "10px",
+                                                                            padding: "4px 8px",
+                                                                            background: "#3b82f6",
+                                                                            color: "#fff",
+                                                                            border: "none",
+                                                                            borderRadius: "4px",
+                                                                            cursor: "pointer",
+                                                                            fontWeight: 500,
+                                                                        }}
+                                                                    >
+                                                                        + Add & select
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setAddingNewPersona(false);
+                                                                            setPersonaDraft("");
+                                                                        }}
+                                                                        style={{
+                                                                            fontSize: "10px",
+                                                                            padding: "4px 8px",
+                                                                            background: "#f1f5f9",
+                                                                            border: "1px solid #cbd5e1",
+                                                                            borderRadius: "4px",
+                                                                            cursor: "pointer",
+                                                                            color: "#475569",
+                                                                            fontWeight: 500,
+                                                                        }}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            ) : null}
+                                                            {personas.map((persona) => (
+                                                                <div
+                                                                    key={persona.id}
+                                                                    onClick={() => {
+                                                                        if (!p.node.personaIds?.includes(persona.id)) {
+                                                                            onUpdateNodePersonas(p.node.id, [
+                                                                                ...(p.node.personaIds || []),
+                                                                                persona.id,
+                                                                            ]);
+                                                                        }
+                                                                        setPersonaDropdownOpen(null);
+                                                                    }}
+                                                                    style={{
+                                                                        padding: "8px 12px",
+                                                                        cursor: "pointer",
+                                                                        borderBottom: "1px solid #f3f4f6",
+                                                                        fontSize: "12px",
+                                                                        color: "#374151",
+                                                                        transition: "background 120ms ease",
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        (e.currentTarget as HTMLElement).style.background = "#f9fafb";
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        (e.currentTarget as HTMLElement).style.background = "#ffffff";
+                                                                    }}
+                                                                >
+                                                                    <span
+                                                                        style={{
+                                                                            display: "inline-block",
+                                                                            width: "8px",
+                                                                            height: "8px",
+                                                                            borderRadius: "999px",
+                                                                            backgroundColor: persona.color || "#0ea5e9",
+                                                                            marginRight: "6px",
+                                                                        }}
+                                                                    />
+                                                                    {persona.name}
+                                                                </div>
+                                                            ))}
+                                                            <div
+                                                                onClick={() => {
+                                                                    setAddingNewPersona(true);
+                                                                    setPersonaDraft("");
+                                                                }}
+                                                                style={{
+                                                                    padding: "8px 12px",
+                                                                    cursor: "pointer",
+                                                                    fontSize: "12px",
+                                                                    color: "#3b82f6",
+                                                                    fontWeight: 500,
+                                                                    borderTop: "1px solid #f3f4f6",
+                                                                    transition: "background 120ms ease",
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    (e.currentTarget as HTMLElement).style.background = "#f0f9ff";
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    (e.currentTarget as HTMLElement).style.background = "#ffffff";
+                                                                }}
+                                                            >
+                                                                + Add new persona
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </foreignObject>
                                         )}
                                     </g>
                                 );
@@ -484,8 +783,7 @@ function layoutTree(root: RCANode, width: number): PositionedNode[] {
 /* ---------- Colors ---------- */
 
 function getNodeColors(
-    priority: PriorityLevel | undefined,
-    isRoot: boolean
+    priority: PriorityLevel | undefined
 ): { fill: string; stroke: string } {
     switch (priority) {
         case "high":
@@ -496,9 +794,7 @@ function getNodeColors(
             return { fill: "#e6f8f3", stroke: "#6bbf99" };
         case "none":
         default:
-            return isRoot
-                ? { fill: "#fff5d6", stroke: "#e3bd62" }
-                : { fill: "#f9fafb", stroke: "#cbd5e1" };
+            return { fill: "#f9fafb", stroke: "#cbd5e1" };
     }
 }
 

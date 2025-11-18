@@ -1,6 +1,6 @@
 // src/App.tsx
 import React from "react";
-import type { Diagram, RCANode, PriorityLevel } from "./types";
+import type { Diagram, RCANode, PriorityLevel, Persona } from "./types";
 import {
   createNode,
   addChildNode,
@@ -17,7 +17,38 @@ import InterventionLayout from "./InterventionLayout";
 import type { TocBundle } from "./tocTypes";
 
 /* ---------------------------------------------------
-   1. Default Cause Bank
+   0. Color Palette for Personas (12 colors)
+----------------------------------------------------*/
+
+const PERSONA_COLORS = [
+  "#fce7f3", // pink
+  "#dbeafe", // blue
+  "#dcfce7", // green
+  "#fef3c7", // yellow
+  "#e9d5ff", // purple
+  "#fed7aa", // orange
+  "#cffafe", // cyan
+  "#f5d4d4", // red-ish
+  "#dbeafe", // light blue
+  "#fce7f3", // light pink
+  "#d1fae5", // teal
+  "#fef08a", // lime
+];
+
+/* ---------------------------------------------------
+   1. Default Personas (Health Sector)
+----------------------------------------------------*/
+
+const defaultPersonas: Persona[] = [
+  { id: "p1", name: "Mother/Caregiver", color: PERSONA_COLORS[0] },
+  { id: "p2", name: "Community Health Worker", color: PERSONA_COLORS[1] },
+  { id: "p3", name: "Community Leader", color: PERSONA_COLORS[2] },
+  { id: "p4", name: "Health Facility Manager", color: PERSONA_COLORS[3] },
+  { id: "p5", name: "Supply Chain Manager", color: PERSONA_COLORS[4] },
+];
+
+/* ---------------------------------------------------
+   2. Default Cause Bank
 ----------------------------------------------------*/
 
 const templates = [
@@ -29,12 +60,13 @@ const templates = [
 ];
 
 /* ---------------------------------------------------
-   2. Initial Diagram Setup
+   3. Initial Diagram Setup
 ----------------------------------------------------*/
 
 const createInitialDiagram = (): Diagram => ({
   id: "diag-1",
   title: "New RCA Diagram",
+  personas: defaultPersonas,
   root: {
     id: "root",
     label: "Describe the problem",
@@ -241,16 +273,31 @@ const App: React.FC = () => {
      RCA Helpers
   ----------------------------------------------------*/
 
-  const isCategory = (id: string | null): boolean => {
-    if (!id) return false;
+  const isCategory = (id: string) => {
     return diagram.root.children.some((child) => child.id === id);
+  };
+
+  const isDirectCause = (id: string) => {
+    // Check if node is a direct child of any category (first-level cause, not sub-cause)
+    return diagram.root.children.some((category) =>
+      category.children.some((cause) => cause.id === id)
+    );
   };
 
   const handleSelectNode = (id: string) => {
     setSelectedNodeId(id);
     if (isCategory(id)) {
       setFocusNodeId(id);
+    } else if (isDirectCause(id)) {
+      // Most proximal causes (direct children of category) become tree root
+      setFocusNodeId(id);
     }
+    // Sub-causes and deeper: don't change focusNodeId
+  };
+
+  const handleSelectNodeInRCATree = (id: string) => {
+    setSelectedNodeId(id);
+    // Don't change focusNodeId - RCA tree selection is independent
   };
 
   const updateRoot = (fn: (root: RCANode) => RCANode) => {
@@ -510,16 +557,38 @@ const App: React.FC = () => {
               priorityByNode={priorityByNode}
               onReorderCategories={reorderCategories}
               onReorderCauses={reorderCauses}
+              personas={diagram.personas || []}
             />
 
             <RCATreeView
               root={diagram.root}
               focusNodeId={focusNodeId}
               selectedNodeId={selectedNodeId}
+              onSelect={handleSelectNodeInRCATree}
               onAddChild={addWhy}
               onDelete={deleteNodeById}
               onLabelChange={changeLabel}
               priorityByNode={priorityByNode}
+              personas={diagram.personas || []}
+              onUpdateNodePersonas={(nodeId, personaIds) => {
+                const updateNodePersonas = (node: RCANode): RCANode => {
+                  if (node.id === nodeId) {
+                    return { ...node, personaIds };
+                  }
+                  return {
+                    ...node,
+                    children: node.children.map(updateNodePersonas),
+                  };
+                };
+                setDiagram((prev) => ({
+                  ...prev,
+                  root: updateNodePersonas(prev.root),
+                }));
+              }}
+              onUpdatePersonas={(personas) => {
+                setDiagram((prev) => ({ ...prev, personas }));
+              }}
+              personaColors={PERSONA_COLORS}
             />
 
             <NotesPane
@@ -529,6 +598,29 @@ const App: React.FC = () => {
               onChangeNote={handleChangeNote}
               priority={currentPriority}
               onChangePriority={handleChangePriority}
+              personas={diagram.personas || []}
+              onUpdatePersonas={(personas) => {
+                setDiagram((prev) => ({
+                  ...prev,
+                  personas,
+                }));
+              }}
+              onUpdateNodePersonas={(nodeId, personaIds) => {
+                const updateNodePersonas = (node: RCANode): RCANode => {
+                  if (node.id === nodeId) {
+                    return { ...node, personaIds };
+                  }
+                  return {
+                    ...node,
+                    children: node.children.map(updateNodePersonas),
+                  };
+                };
+                setDiagram((prev) => ({
+                  ...prev,
+                  root: updateNodePersonas(prev.root),
+                }));
+              }}
+              personaColors={PERSONA_COLORS}
             />
           </main>
 

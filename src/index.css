@@ -130,7 +130,7 @@ body {
   gap: 6px;
 }
 
-/* Base: scrollable but scrollbars hidden */
+/* Base: scrollable with scrollbars visible only when scrolling */
 .pane-body {
   flex: 1;
   min-height: 0;
@@ -141,16 +141,17 @@ body {
   /* Reserve scrollbar space at all times */
   scrollbar-gutter: stable;
 
-  /* Make scrollbars invisible by default */
+  /* Scrollbar styling */
   scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  transition: scrollbar-color 200ms ease;
 }
 
-/* Hide scrollbar thumb */
-.pane-body {
-  scrollbar-color: transparent transparent;
+.pane-body:active {
+  scrollbar-color: #cbd5e1 #cbd5e1;
 }
 
-/* WebKit/Chromium invisible scrollbar but keep gutter */
+/* WebKit/Chromium scrollbar styling */
 .pane-body::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -162,6 +163,12 @@ body {
 
 .pane-body::-webkit-scrollbar-thumb {
   background: transparent;
+  border-radius: 3px;
+  transition: background 200ms ease;
+}
+
+.pane-body:active::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
 }
 
 .pane-body svg {
@@ -332,29 +339,41 @@ body {
 
 .intervention-sidebar {
   flex: 0 0 270px;
-  max-width: 320px;
+  width: 270px;
+  max-width: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Right pane: ToC builder */
+/* Middle pane: ToC builder */
 
 .intervention-workspace {
   flex: 1;
   min-width: 0;
-  background: #f9fbff;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   padding: 12px 14px;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+
+  /* Reserve scrollbar space at all times */
+  scrollbar-gutter: stable;
+
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
-/* Right-right pane: Notes panel */
+/* Right pane: Notes panel */
 
 .intervention-notes-pane {
-  flex: 0 0 auto;
-  min-width: 280px;
-  max-width: 380px;
-  width: 25%;
+  flex: 0 0 380px;
+  width: 380px;
+  max-width: none;
   background: #fafbfc;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
@@ -364,6 +383,13 @@ body {
   gap: 12px;
   overflow-y: auto;
   position: relative;
+
+  /* Reserve scrollbar space at all times */
+  scrollbar-gutter: stable;
+
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .notes-pane-header {
@@ -543,7 +569,69 @@ body {
 }
 
 /* ===========================
-   ToC Builder Pane
+   Persona Bank (RCA Tree)
+   =========================== */
+
+.persona-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f9fbff;
+  border-radius: 0;
+  border-bottom: 1px solid #dbeafe;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.persona-bank-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.persona-bank-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Persona chip styling */
+.persona-chip {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  transition: all 120ms ease;
+}
+
+.persona-chip:hover {
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
+}
+
+.persona-chip button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  color: rgba(0, 0, 0, 0.5);
+  transition: color 120ms ease;
+}
+
+.persona-chip button:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* ===========================
+   Persona Bank (RCA Tree)
    =========================== */
 
 .toc-pane {
@@ -833,8 +921,6 @@ body {
    Activities & Actor Chips
    =========================== */
 
-/* top row inside activity pill (name + delete) */
-
 .activity-main-row {
   display: flex;
   align-items: center;
@@ -1004,9 +1090,12 @@ body {
    Mobile / small screens
    =========================== */
 
-@media (max-width: 900px) {
+/* ===========================
+   Mobile / small screens
+   =========================== */
 
-  /* allow the app to grow taller than the viewport */
+@media (max-width: 1200px) {
+
   .app-root {
     height: auto;
     min-height: 100vh;
@@ -1020,12 +1109,10 @@ body {
   .pane {
     flex: 0 0 auto;
     height: 60vh;
-    /* Fishbone & RCA get good vertical space */
   }
 
   .pane-narrow {
     height: 40vh;
-    /* Notes pane a bit shorter */
   }
 
   .intervention-main {
@@ -1034,7 +1121,24 @@ body {
 
   .intervention-sidebar {
     flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .intervention-workspace {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .intervention-notes-pane {
+    flex: 0 0 auto;
+    width: 100%;
     max-width: none;
+  }
+
+  .notes-pane-content {
+    flex: 0 0 auto;
+    height: auto !important;
+    overflow-y: auto;
   }
 }
 

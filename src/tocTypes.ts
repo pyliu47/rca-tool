@@ -49,6 +49,7 @@ export interface ActivityItem {
     label: string;
     description?: string;
     actors: string[]; // multiple actors per activity
+    personaIds?: string[]; // which personas this activity engages
     inputIds: string[]; // references to inputs within this activity
     outputIds: string[]; // references to outputs within this activity
     assumptionIds: string[]; // references to assumptions within this activity
@@ -63,6 +64,7 @@ export interface OutcomeItem {
     id: string;
     label: string;
     description?: string;
+    personaIds?: string[]; // which personas this outcome affects
     tier?: number; // optional tier level for grouping
     contributingActivityIds: string[]; // activities that contribute to this outcome
     indicators?: IndicatorItem[]; // nested indicators for this outcome

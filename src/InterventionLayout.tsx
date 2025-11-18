@@ -160,53 +160,53 @@ const InterventionLayout: React.FC<Props> = ({
             {/* RIGHT DETAILS PANE - Only show when open and item is selected */}
             {detailsPaneOpen && selectedDetails && (
                 <div className="intervention-notes-pane">
-                    <>
-                        {selectedDetails.type === "activity" && bundle && (
-                            <ActivityDetailsPane
-                                activity={selectedDetails.item as ActivityItem}
-                                bundle={bundle}
-                                onUpdate={(updates) => {
-                                    if (activeBundleId) {
-                                        updateBundle(activeBundleId, (b) => ({
-                                            ...b,
-                                            activities: (b.activities || []).map((a) =>
-                                                a.id === (selectedDetails.item as ActivityItem).id
-                                                    ? { ...a, ...updates }
-                                                    : a
-                                            ),
-                                        }));
-                                    }
-                                }}
-                            />
-                        )}
+                    {selectedDetails.type === "activity" && bundle && (
+                        <ActivityDetailsPane
+                            activity={selectedDetails.item as ActivityItem}
+                            bundle={bundle}
+                            updateBundle={updateBundle}
+                            bundleId={activeBundleId || undefined}
+                            onUpdate={(updates) => {
+                                if (activeBundleId) {
+                                    updateBundle(activeBundleId, (b) => ({
+                                        ...b,
+                                        activities: (b.activities || []).map((a) =>
+                                            a.id === (selectedDetails.item as ActivityItem).id
+                                                ? { ...a, ...updates }
+                                                : a
+                                        ),
+                                    }));
+                                }
+                            }}
+                        />
+                    )}
 
-                        {selectedDetails.type === "outcome" && (
-                            <OutcomeDetailsPane
-                                outcome={selectedDetails.item as OutcomeItem}
-                                bundle={bundle!}
-                                onUpdate={(updates) => {
-                                    if (activeBundleId) {
-                                        updateBundle(activeBundleId, (b) => ({
-                                            ...b,
-                                            outcomes: (b.outcomes || []).map((o) =>
-                                                o.id === (selectedDetails.item as OutcomeItem).id
-                                                    ? { ...o, ...updates }
-                                                    : o
-                                            ),
-                                        }));
-                                    }
-                                }}
-                                onBundleUpdate={(updates) => {
-                                    if (activeBundleId) {
-                                        updateBundle(activeBundleId, (b) => ({
-                                            ...b,
-                                            ...updates,
-                                        }));
-                                    }
-                                }}
-                            />
-                        )}
-                    </>
+                    {selectedDetails.type === "outcome" && (
+                        <OutcomeDetailsPane
+                            outcome={selectedDetails.item as OutcomeItem}
+                            bundle={bundle!}
+                            onUpdate={(updates) => {
+                                if (activeBundleId) {
+                                    updateBundle(activeBundleId, (b) => ({
+                                        ...b,
+                                        outcomes: (b.outcomes || []).map((o) =>
+                                            o.id === (selectedDetails.item as OutcomeItem).id
+                                                ? { ...o, ...updates }
+                                                : o
+                                        ),
+                                    }));
+                                }
+                            }}
+                            onBundleUpdate={(updates) => {
+                                if (activeBundleId) {
+                                    updateBundle(activeBundleId, (b) => ({
+                                        ...b,
+                                        ...updates,
+                                    }));
+                                }
+                            }}
+                        />
+                    )}
                     <div style={{ position: "absolute", top: "8px", right: "14px" }}>
                         <button
                             onClick={() => setDetailsPaneOpen(false)}
@@ -367,17 +367,37 @@ interface ActivityDetailsPaneProps {
     activity: ActivityItem;
     bundle: TocBundle;
     onUpdate: (updates: Partial<ActivityItem>) => void;
+    updateBundle?: (id: string, fn: (b: TocBundle) => TocBundle) => void;
+    bundleId?: string;
 }
 
 const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
     activity,
     bundle,
     onUpdate,
+    updateBundle,
+    bundleId,
 }) => {
     // Local state for actor management
-    const [isAddingActor, setIsAddingActor] = React.useState(false);
+    const [actorDropdownOpen, setActorDropdownOpen] = React.useState(false);
     const [actorDraft, setActorDraft] = React.useState("");
     const [addingNewActor, setAddingNewActor] = React.useState(false);
+    const [deletingActorName, setDeletingActorName] = React.useState<string | null>(null);
+    const actorDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (actorDropdownRef.current && !actorDropdownRef.current.contains(event.target as Node)) {
+                setActorDropdownOpen(false);
+            }
+        };
+
+        if (actorDropdownOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+        }
+    }, [actorDropdownOpen]);
 
     // Available actors - from bundle
     const availableActors = React.useMemo(() => {
@@ -401,8 +421,8 @@ const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
         }
 
         setActorDraft("");
-        setIsAddingActor(false);
         setAddingNewActor(false);
+        setActorDropdownOpen(false);
     };
 
     // Input helpers
@@ -556,13 +576,13 @@ const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
 
                 <div style={{ marginBottom: '16px' }}>
                     <label className="section-label section-label-block">
-                        Description
+                        Design
                     </label>
                     <textarea
                         className="input-field"
                         value={activity.description || ""}
                         onChange={(e) => onUpdate({ description: e.target.value })}
-                        placeholder="Describe what this activity involves..."
+                        placeholder="How will this activity be designed and implemented? What approach, methods, or tools will be used to ensure success?"
                         style={{
                             width: '100%',
                             padding: '8px 10px',
@@ -570,7 +590,7 @@ const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
                             border: '1px solid #e5e7eb',
                             borderRadius: '6px',
                             boxSizing: 'border-box',
-                            minHeight: '70px',
+                            minHeight: '100px',
                             fontFamily: 'inherit',
                             background: '#ffffff',
                             transition: 'all 120ms ease',
@@ -608,214 +628,310 @@ const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
                         ))}
                     </div>
 
-                    {!isAddingActor ? (
+                    <div style={{ position: 'relative' }} ref={actorDropdownRef}>
                         <button
                             type="button"
                             className="btn-add"
-                            onClick={() => setIsAddingActor(true)}
+                            onClick={() => setActorDropdownOpen(!actorDropdownOpen)}
                         >
                             + Add actor
                         </button>
-                    ) : (
-                        <div style={{ position: 'relative', display: 'flex', gap: '6px' }}>
-                            <button
-                                className="btn-dropdown"
-                                onClick={(e) => {
-                                    const dropdown = (e.currentTarget.nextElementSibling as HTMLElement);
-                                    if (dropdown) dropdown.style.display = dropdown.style.display === 'none' || !dropdown.style.display ? 'block' : 'none';
-                                }}
-                            >
-                                Select actor...
-                            </button>
 
-                            <div style={{
-                                display: 'none',
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: '4px',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '6px',
-                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                                zIndex: 10,
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                minWidth: '200px',
-                            }}>
-                                {addingNewActor ? (
-                                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '4px' }}>
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            placeholder="Actor name..."
-                                            value={actorDraft}
-                                            onChange={(e) => setActorDraft(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                    e.preventDefault();
-                                                    handleAddActor(actorDraft);
-                                                } else if (e.key === "Escape") {
-                                                    setAddingNewActor(false);
-                                                    setActorDraft("");
-                                                }
-                                            }}
-                                            style={{
-                                                fontSize: '11px',
-                                                padding: '4px 6px',
-                                                border: '1px solid #cbd5e1',
-                                                borderRadius: '4px',
-                                                flex: 1,
-                                                outline: 'none',
-                                                background: '#ffffff',
-                                            }}
-                                            onFocus={(e) => {
-                                                (e.currentTarget as HTMLElement).style.borderColor = '#3b82f6';
-                                            }}
-                                            onBlur={(e) => {
-                                                (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1';
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
+                        <div style={{
+                            display: actorDropdownOpen ? 'block' : 'none',
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            marginTop: '4px',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                            zIndex: 10,
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            minWidth: '200px',
+                        }}>
+                            {addingNewActor ? (
+                                <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '4px' }}>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="Actor name..."
+                                        value={actorDraft}
+                                        onChange={(e) => setActorDraft(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
                                                 handleAddActor(actorDraft);
-                                                setIsAddingActor(false);
-                                            }}
-                                            style={{
-                                                fontSize: '10px',
-                                                padding: '4px 8px',
-                                                background: '#3b82f6',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontWeight: 500,
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                (e.currentTarget as HTMLElement).style.background = '#2563eb';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                (e.currentTarget as HTMLElement).style.background = '#3b82f6';
-                                            }}
-                                        >
-                                            Add
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
+                                            } else if (e.key === "Escape") {
                                                 setAddingNewActor(false);
                                                 setActorDraft("");
-                                            }}
+                                            }
+                                        }}
+                                        style={{
+                                            fontSize: '11px',
+                                            padding: '4px 6px',
+                                            border: '1px solid #cbd5e1',
+                                            borderRadius: '4px',
+                                            flex: 1,
+                                            outline: 'none',
+                                            background: '#ffffff',
+                                        }}
+                                        onFocus={(e) => {
+                                            (e.currentTarget as HTMLElement).style.borderColor = '#3b82f6';
+                                        }}
+                                        onBlur={(e) => {
+                                            (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1';
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            handleAddActor(actorDraft);
+                                        }}
+                                        style={{
+                                            fontSize: '10px',
+                                            padding: '4px 8px',
+                                            background: '#3b82f6',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontWeight: 500,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLElement).style.background = '#2563eb';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            (e.currentTarget as HTMLElement).style.background = '#3b82f6';
+                                        }}
+                                    >
+                                        + Add
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setAddingNewActor(false);
+                                            setActorDraft("");
+                                        }}
+                                        style={{
+                                            fontSize: '10px',
+                                            padding: '4px 8px',
+                                            background: '#f1f5f9',
+                                            border: '1px solid #cbd5e1',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            color: '#475569',
+                                            fontWeight: 500,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLElement).style.background = '#e2e8f0';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : null}
+                            <>
+                                {availableActors.map((a) => {
+                                    const isSelected = (activity.actors || []).includes(a);
+                                    return (
+                                        <div
+                                            key={a}
                                             style={{
-                                                fontSize: '10px',
-                                                padding: '4px 8px',
-                                                background: '#f1f5f9',
-                                                border: '1px solid #cbd5e1',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                color: '#475569',
-                                                fontWeight: 500,
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                (e.currentTarget as HTMLElement).style.background = '#e2e8f0';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
-                                            }}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {availableActors
-                                            .filter((a) => !(activity.actors || []).includes(a))
-                                            .map((a) => (
-                                                <button
-                                                    key={a}
-                                                    onClick={() => {
-                                                        handleAddActor(a);
-                                                        setIsAddingActor(false);
-                                                    }}
-                                                    style={{
-                                                        display: 'block',
-                                                        width: '100%',
-                                                        padding: '8px 12px',
-                                                        textAlign: 'left',
-                                                        fontSize: '11px',
-                                                        fontWeight: 500,
-                                                        color: '#64748b',
-                                                        backgroundColor: 'transparent',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 120ms ease',
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        (e.currentTarget as HTMLElement).style.backgroundColor = '#f1f5f9';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                                                    }}
-                                                >
-                                                    {a}
-                                                </button>
-                                            ))}
-                                        <button
-                                            onClick={() => setAddingNewActor(true)}
-                                            style={{
-                                                display: 'block',
-                                                width: '100%',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
                                                 padding: '8px 12px',
-                                                textAlign: 'left',
                                                 fontSize: '11px',
                                                 fontWeight: 500,
-                                                color: '#3b82f6',
-                                                backgroundColor: 'transparent',
-                                                border: 'none',
-                                                borderTop: '1px solid #e5e7eb',
-                                                cursor: 'pointer',
+                                                color: isSelected ? '#1e293b' : '#64748b',
+                                                backgroundColor: isSelected ? '#eff6ff' : 'transparent',
+                                                borderBottom: '1px solid #f3f4f6',
                                                 transition: 'all 120ms ease',
                                             }}
                                             onMouseEnter={(e) => {
-                                                (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
+                                                (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? '#eff6ff' : '#f1f5f9';
                                             }}
                                             onMouseLeave={(e) => {
-                                                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                                (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? '#eff6ff' : 'transparent';
                                             }}
                                         >
-                                            + Add new...
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => setIsAddingActor(false)}
-                                style={{
-                                    fontSize: '12px',
-                                    padding: '6px 10px',
-                                    background: '#f1f5f9',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    color: '#475569',
-                                    fontWeight: 500,
-                                    transition: 'all 120ms ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    (e.currentTarget as HTMLElement).style.background = '#e2e8f0';
-                                }}
-                                onMouseLeave={(e) => {
-                                    (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
-                                }}
-                            >
-                                Cancel
-                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        const updatedActors = (activity.actors || []).filter(act => act !== a);
+                                                        onUpdate({ actors: updatedActors });
+                                                    } else {
+                                                        handleAddActor(a);
+                                                    }
+                                                }}
+                                                style={{
+                                                    flex: 1,
+                                                    textAlign: 'left',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    fontSize: 'inherit',
+                                                    fontWeight: 'inherit',
+                                                    color: 'inherit',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                }}
+                                            >
+                                                {isSelected && <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>✓</span>}
+                                                {a}
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeletingActorName(a);
+                                                }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '2px 6px',
+                                                    fontSize: '12px',
+                                                    color: '#9ca3af',
+                                                    fontWeight: 600,
+                                                    transition: 'color 120ms ease',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    (e.currentTarget as HTMLElement).style.color = '#6b7280';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    (e.currentTarget as HTMLElement).style.color = '#9ca3af';
+                                                }}
+                                                title="Delete this actor from the database"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => setAddingNewActor(true)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '8px 12px',
+                                        textAlign: 'left',
+                                        fontSize: '11px',
+                                        fontWeight: 500,
+                                        color: '#3b82f6',
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        borderTop: '1px solid #e5e7eb',
+                                        cursor: 'pointer',
+                                        transition: 'all 120ms ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    + Add new...
+                                </button>
+                            </>
                         </div>
-                    )}
+                    </div>
                 </div>
+
+                {/* DELETE CONFIRMATION DIALOG */}
+                {deletingActorName && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000,
+                    }}>
+                        <div style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '20px',
+                            maxWidth: '400px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+                        }}>
+                            <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#1e293b', fontSize: '16px', fontWeight: 600 }}>
+                                Delete Actor?
+                            </h3>
+                            <p style={{ marginBottom: '16px', color: '#64748b', fontSize: '13px', lineHeight: '1.5' }}>
+                                Are you sure you want to delete <strong>"{deletingActorName}"</strong> from the database? This will remove it from all activities.
+                            </p>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setDeletingActorName(null)}
+                                    style={{
+                                        fontSize: '12px',
+                                        padding: '6px 12px',
+                                        background: '#f1f5f9',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        color: '#475569',
+                                        fontWeight: 500,
+                                        transition: 'all 120ms ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLElement).style.background = '#e2e8f0';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (updateBundle && bundleId) {
+                                            updateBundle(bundleId, (b) => ({
+                                                ...b,
+                                                actors: (b.actors || []).filter((a) => a !== deletingActorName),
+                                            }));
+                                        }
+                                        setDeletingActorName(null);
+                                    }}
+                                    style={{
+                                        fontSize: '12px',
+                                        padding: '6px 12px',
+                                        background: '#ef4444',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        color: '#ffffff',
+                                        fontWeight: 500,
+                                        transition: 'all 120ms ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLElement).style.background = '#dc2626';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLElement).style.background = '#ef4444';
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* INPUTS SECTION */}
                 <div style={{ marginBottom: '16px' }}>

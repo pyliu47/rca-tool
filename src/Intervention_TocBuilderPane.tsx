@@ -198,269 +198,267 @@ export const ToCBuilderPane: React.FC<Props> = ({
     // -----------------------------------
 
     return (
-        <div className="intervention-workspace">
-            <div className="toc-pane">
-                {/* Name + description */}
-                <section className="toc-section">
-                    <div className="section-title">Intervention Name</div>
-                    <input
-                        className="input-line"
-                        value={bundle.name || ""}
-                        onChange={(e) => updateField("name", e.target.value)}
-                        placeholder="Intervention name..."
-                    />
+        <div className="toc-pane">
+            {/* Name + description */}
+            <section className="toc-section">
+                <div className="section-title">Intervention Name</div>
+                <input
+                    className="input-line"
+                    value={bundle.name || ""}
+                    onChange={(e) => updateField("name", e.target.value)}
+                    placeholder="Intervention name..."
+                />
 
-                    <div className="section-title">Description</div>
-                    <textarea
-                        className="textarea"
-                        value={bundle.description || ""}
-                        onChange={(e) => updateField("description", e.target.value)}
-                        placeholder="Briefly describe this intervention..."
-                    />
-                </section>
+                <div className="section-title">Description</div>
+                <textarea
+                    className="textarea"
+                    value={bundle.description || ""}
+                    onChange={(e) => updateField("description", e.target.value)}
+                    placeholder="Briefly describe this intervention..."
+                />
+            </section>
 
-                {/* Focal causes */}
-                <section className="toc-section">
-                    <div className="section-title">Focal causes</div>
+            {/* Focal causes */}
+            <section className="toc-section">
+                <div className="section-title">Focal causes</div>
 
-                    {orderedFocalCauses.length === 0 ? (
-                        <div className="focal-empty">
-                            Select causes on the left to anchor this intervention.
-                        </div>
-                    ) : (
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
+                {orderedFocalCauses.length === 0 ? (
+                    <div className="focal-empty">
+                        Select causes on the left to anchor this intervention.
+                    </div>
+                ) : (
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={orderedFocalCauses.map((_, idx) => `focal:${idx}`)}
+                            strategy={verticalListSortingStrategy}
                         >
+                            <div className="focal-causes-container">
+                                {(() => {
+                                    const rows: (FocalCauseInfo & { index: number })[][] = [];
+                                    for (let i = 0; i < orderedFocalCauses.length; i += 4) {
+                                        rows.push(
+                                            orderedFocalCauses.slice(i, i + 4).map((c, colIdx) => ({
+                                                ...c,
+                                                index: i + colIdx,
+                                            }))
+                                        );
+                                    }
+                                    return rows.map((row, rowIdx) => (
+                                        <div key={rowIdx} className="focal-causes-row">
+                                            {row.map((c) => (
+                                                <SortablePill key={`focal:${c.index}`} id={`focal:${c.index}`}>
+                                                    <div className="focal-card">
+                                                        <div className="focal-cause-header">
+                                                            <div className="focal-cause-label">
+                                                                {c.causeLabel}
+                                                            </div>
+                                                            {c.categoryLabel && (
+                                                                <div className="focal-category">
+                                                                    {c.categoryLabel}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {c.underlyingCauses && c.underlyingCauses.length > 0 && (
+                                                            <ul className="underlying-list">
+                                                                {c.underlyingCauses.map((u, idx) => (
+                                                                    <li key={idx} className="underlying-item">
+                                                                        {u}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                </SortablePill>
+                                            ))}
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                )}
+            </section>
+
+            {/* THREE-COLUMN LAYOUT: Activities and Outcomes */}
+            <section className="toc-section">
+                <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={16} />
+                    Activities
+                </div>
+
+                {(bundle.activities || []).length === 0 ? (
+                    <div style={{
+                        padding: '16px',
+                        backgroundColor: '#f0fdf4',
+                        borderRadius: '8px',
+                        border: '1px solid #dcfce7',
+                        marginBottom: '12px'
+                    }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '8px' }}>
+                            How might we achieve this through action?
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '12px' }}>
+                            <p style={{ margin: '0 0 8px 0' }}>
+                                <strong>If</strong> we implement activities that directly address the focal causes, <strong>then</strong> we'll move toward the desired outcomes.
+                            </p>
+                            <p style={{ margin: '0 0 8px 0' }}>
+                                Consider what your team or organization needs to <em>do</em>:
+                            </p>
+                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                                <li>Train or build capacity (e.g., "Train staff on inventory management")</li>
+                                <li>Distribute resources or tools (e.g., "Provide cold chain equipment")</li>
+                                <li>Establish new processes (e.g., "Set up data monitoring system")</li>
+                                <li>Conduct awareness or engagement (e.g., "Community health education campaign")</li>
+                            </ul>
+                        </div>
+                    </div>
+                ) : null}
+
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <div className="logic-row">
+                        {/* Activities column */}
+                        <div className="logic-col">
                             <SortableContext
-                                items={orderedFocalCauses.map((_, idx) => `focal:${idx}`)}
+                                items={(bundle.activities || []).map((_, idx) => `activity:${idx}`)}
                                 strategy={verticalListSortingStrategy}
                             >
-                                <div className="focal-causes-container">
-                                    {(() => {
-                                        const rows: (FocalCauseInfo & { index: number })[][] = [];
-                                        for (let i = 0; i < orderedFocalCauses.length; i += 4) {
-                                            rows.push(
-                                                orderedFocalCauses.slice(i, i + 4).map((c, colIdx) => ({
-                                                    ...c,
-                                                    index: i + colIdx,
-                                                }))
-                                            );
-                                        }
-                                        return rows.map((row, rowIdx) => (
-                                            <div key={rowIdx} className="focal-causes-row">
-                                                {row.map((c) => (
-                                                    <SortablePill key={`focal:${c.index}`} id={`focal:${c.index}`}>
-                                                        <div className="focal-card">
-                                                            <div className="focal-cause-header">
-                                                                <div className="focal-cause-label">
-                                                                    {c.causeLabel}
-                                                                </div>
-                                                                {c.categoryLabel && (
-                                                                    <div className="focal-category">
-                                                                        {c.categoryLabel}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            {c.underlyingCauses && c.underlyingCauses.length > 0 && (
-                                                                <ul className="underlying-list">
-                                                                    {c.underlyingCauses.map((u, idx) => (
-                                                                        <li key={idx} className="underlying-item">
-                                                                            {u}
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            )}
-                                                        </div>
-                                                    </SortablePill>
-                                                ))}
+                                <div className="logic-col-items">
+                                    {(bundle.activities || []).map((activity, index) => (
+                                        <SortablePill key={`activity:${index}`} id={`activity:${index}`}>
+                                            <div
+                                                className={`activity-pill ${selectedItemId === `activity:${activity.id}` ? 'selected' : ''}`}
+                                                onClick={() => onSelectItem(`activity:${activity.id}`)}
+                                            >
+                                                <Card
+                                                    title={activity.label}
+                                                    placeholder="Activity..."
+                                                    editableTitle
+                                                    onTitleChange={(v: string) => updateActivity(activity.id, { label: v })}
+                                                    headerRight={<button type="button" onClick={() => removeActivity(activity.id)}>✕</button>}
+                                                    className="activity-card"
+                                                >
+                                                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                                        {(activity.actors || []).length > 0 && (
+                                                            <div>{(activity.actors || []).join(", ")}</div>
+                                                        )}
+                                                    </div>
+                                                </Card>
                                             </div>
-                                        ));
-                                    })()}
+                                        </SortablePill>
+                                    ))}
                                 </div>
                             </SortableContext>
-                        </DndContext>
-                    )}
-                </section>
 
-                {/* THREE-COLUMN LAYOUT: Activities and Outcomes */}
-                <section className="toc-section">
-                    <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Zap size={16} />
-                        Activities
+                            <button
+                                type="button"
+                                className="small-btn"
+                                onClick={addActivity}
+                                style={{ width: '100%', marginBottom: '10px' }}
+                            >
+                                + Add activity
+                            </button>
+                        </div>
                     </div>
+                </DndContext>
+            </section>
 
-                    {(bundle.activities || []).length === 0 ? (
-                        <div style={{
-                            padding: '16px',
-                            backgroundColor: '#f0fdf4',
-                            borderRadius: '8px',
-                            border: '1px solid #dcfce7',
-                            marginBottom: '12px'
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '8px' }}>
-                                How might we achieve this through action?
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '12px' }}>
-                                <p style={{ margin: '0 0 8px 0' }}>
-                                    <strong>If</strong> we implement activities that directly address the focal causes, <strong>then</strong> we'll move toward the desired outcomes.
-                                </p>
-                                <p style={{ margin: '0 0 8px 0' }}>
-                                    Consider what your team or organization needs to <em>do</em>:
-                                </p>
-                                <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                                    <li>Train or build capacity (e.g., "Train staff on inventory management")</li>
-                                    <li>Distribute resources or tools (e.g., "Provide cold chain equipment")</li>
-                                    <li>Establish new processes (e.g., "Set up data monitoring system")</li>
-                                    <li>Conduct awareness or engagement (e.g., "Community health education campaign")</li>
-                                </ul>
-                            </div>
+            {/* Outcomes Section */}
+            <section className="toc-section">
+                <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Target size={16} />
+                    Outcomes
+                </div>
+
+                {(bundle.outcomes || []).length === 0 ? (
+                    <div style={{
+                        padding: '16px',
+                        backgroundColor: '#fef3c7',
+                        borderRadius: '8px',
+                        border: '1px solid #fde68a',
+                        marginBottom: '12px'
+                    }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', marginBottom: '8px' }}>
+                            What changes do we expect to see?
                         </div>
-                    ) : null}
-
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <div className="logic-row">
-                            {/* Activities column */}
-                            <div className="logic-col">
-                                <SortableContext
-                                    items={(bundle.activities || []).map((_, idx) => `activity:${idx}`)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    <div className="logic-col-items">
-                                        {(bundle.activities || []).map((activity, index) => (
-                                            <SortablePill key={`activity:${index}`} id={`activity:${index}`}>
-                                                <div
-                                                    className={`activity-pill ${selectedItemId === `activity:${activity.id}` ? 'selected' : ''}`}
-                                                    onClick={() => onSelectItem(`activity:${activity.id}`)}
-                                                >
-                                                    <Card
-                                                        title={activity.label}
-                                                        placeholder="Activity..."
-                                                        editableTitle
-                                                        onTitleChange={(v: string) => updateActivity(activity.id, { label: v })}
-                                                        headerRight={<button type="button" onClick={() => removeActivity(activity.id)}>✕</button>}
-                                                        className="activity-card"
-                                                    >
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {(activity.actors || []).length > 0 && (
-                                                                <div>{(activity.actors || []).join(", ")}</div>
-                                                            )}
-                                                        </div>
-                                                    </Card>
-                                                </div>
-                                            </SortablePill>
-                                        ))}
-                                    </div>
-                                </SortableContext>
-
-                                <button
-                                    type="button"
-                                    className="small-btn"
-                                    onClick={addActivity}
-                                    style={{ width: '100%', marginBottom: '10px' }}
-                                >
-                                    + Add activity
-                                </button>
-                            </div>
+                        <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '12px' }}>
+                            <p style={{ margin: '0 0 8px 0' }}>
+                                <strong>If</strong> our activities are successful, <strong>then</strong> we should observe these specific improvements or changes in behavior, capacity, or conditions.
+                            </p>
+                            <p style={{ margin: '0 0 8px 0' }}>
+                                Good outcomes describe the <em>state of change</em>, not the activity itself:
+                            </p>
+                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                                <li><strong>What improves:</strong> "Improved vaccine cold chain management"</li>
+                                <li><strong>Who changes:</strong> "Staff confidence in inventory procedures"</li>
+                                <li><strong>How systems shift:</strong> "Reduced product wastage due to temperature excursions"</li>
+                                <li><strong>Access/equity increases:</strong> "Equitable vaccine access across all service points"</li>
+                            </ul>
                         </div>
-                    </DndContext>
-                </section>
-
-                {/* Outcomes Section */}
-                <section className="toc-section">
-                    <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Target size={16} />
-                        Outcomes
                     </div>
+                ) : null}
 
-                    {(bundle.outcomes || []).length === 0 ? (
-                        <div style={{
-                            padding: '16px',
-                            backgroundColor: '#fef3c7',
-                            borderRadius: '8px',
-                            border: '1px solid #fde68a',
-                            marginBottom: '12px'
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', marginBottom: '8px' }}>
-                                What changes do we expect to see?
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '12px' }}>
-                                <p style={{ margin: '0 0 8px 0' }}>
-                                    <strong>If</strong> our activities are successful, <strong>then</strong> we should observe these specific improvements or changes in behavior, capacity, or conditions.
-                                </p>
-                                <p style={{ margin: '0 0 8px 0' }}>
-                                    Good outcomes describe the <em>state of change</em>, not the activity itself:
-                                </p>
-                                <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                                    <li><strong>What improves:</strong> "Improved vaccine cold chain management"</li>
-                                    <li><strong>Who changes:</strong> "Staff confidence in inventory procedures"</li>
-                                    <li><strong>How systems shift:</strong> "Reduced product wastage due to temperature excursions"</li>
-                                    <li><strong>Access/equity increases:</strong> "Equitable vaccine access across all service points"</li>
-                                </ul>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <div className="logic-row">
-                            {/* Outcomes column */}
-                            <div className="logic-col">
-                                <SortableContext
-                                    items={(bundle.outcomes || []).map((_, idx) => `outcome:${idx}`)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    <div className="logic-col-items">
-                                        {(bundle.outcomes || []).map((outcome, index) => (
-                                            <SortablePill key={`outcome:${index}`} id={`outcome:${index}`}>
-                                                <div
-                                                    className={`activity-pill ${selectedItemId === `outcome:${outcome.id}` ? 'selected' : ''}`}
-                                                    onClick={() => onSelectItem(`outcome:${outcome.id}`)}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <div className="logic-row">
+                        {/* Outcomes column */}
+                        <div className="logic-col">
+                            <SortableContext
+                                items={(bundle.outcomes || []).map((_, idx) => `outcome:${idx}`)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <div className="logic-col-items">
+                                    {(bundle.outcomes || []).map((outcome, index) => (
+                                        <SortablePill key={`outcome:${index}`} id={`outcome:${index}`}>
+                                            <div
+                                                className={`activity-pill ${selectedItemId === `outcome:${outcome.id}` ? 'selected' : ''}`}
+                                                onClick={() => onSelectItem(`outcome:${outcome.id}`)}
+                                            >
+                                                <Card
+                                                    title={outcome.label}
+                                                    placeholder="Outcome..."
+                                                    editableTitle
+                                                    onTitleChange={(v: string) => updateOutcome(outcome.id, { label: v })}
+                                                    headerRight={<button type="button" onClick={() => removeOutcome(outcome.id)}>✕</button>}
+                                                    className="activity-card"
                                                 >
-                                                    <Card
-                                                        title={outcome.label}
-                                                        placeholder="Outcome..."
-                                                        editableTitle
-                                                        onTitleChange={(v: string) => updateOutcome(outcome.id, { label: v })}
-                                                        headerRight={<button type="button" onClick={() => removeOutcome(outcome.id)}>✕</button>}
-                                                        className="activity-card"
-                                                    >
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {outcome.tier && <div>{getTierLabel(outcome.tier)}</div>}
-                                                        </div>
-                                                    </Card>
-                                                </div>
-                                            </SortablePill>
-                                        ))}
-                                    </div>
-                                </SortableContext>
+                                                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                                        {outcome.tier && <div>{getTierLabel(outcome.tier)}</div>}
+                                                    </div>
+                                                </Card>
+                                            </div>
+                                        </SortablePill>
+                                    ))}
+                                </div>
+                            </SortableContext>
 
-                                <button
-                                    type="button"
-                                    className="small-btn"
-                                    onClick={addOutcome}
-                                    style={{ width: '100%', marginBottom: '10px' }}
-                                >
-                                    + Add outcome
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                className="small-btn"
+                                onClick={addOutcome}
+                                style={{ width: '100%', marginBottom: '10px' }}
+                            >
+                                + Add outcome
+                            </button>
                         </div>
-                    </DndContext>
-                </section>
+                    </div>
+                </DndContext>
+            </section>
 
-                {/* Theory of Change Diagram */}
-                <section className="toc-section">
-                    <TocDiagramWithTitle bundle={bundle} focalCauses={orderedFocalCauses} />
-                </section>
-            </div>
+            {/* Theory of Change Diagram */}
+            <section className="toc-section">
+                <TocDiagramWithTitle bundle={bundle} focalCauses={orderedFocalCauses} />
+            </section>
         </div>
     );
 };
