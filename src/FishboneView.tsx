@@ -1,7 +1,10 @@
 // src/FishboneView.tsx
 import React from "react";
-import type { RCANode, PriorityLevel, Persona } from "./types";
+import type { RCANode, PriorityLevel, Persona, FishboneGroup } from "./types";
 import { Lock, Unlock, GitBranch } from "lucide-react";
+
+
+// Palette for cycling group colors
 
 interface Props {
     root: RCANode;
@@ -15,6 +18,9 @@ interface Props {
     onReorderCategories: (fromId: string, toId: string) => void;
     onReorderCauses: (categoryId: string, fromId: string, toId: string) => void;
     personas: Persona[];
+    groups: FishboneGroup[];
+    onUpdateGroups: (groups: FishboneGroup[]) => void;
+    onUpdateCategoryGroup: (categoryId: string, groupId: string | null) => void;
 }
 
 export const FishboneView: React.FC<Props> = ({
@@ -29,6 +35,9 @@ export const FishboneView: React.FC<Props> = ({
     onReorderCategories,
     onReorderCauses,
     personas,
+    groups,
+    onUpdateGroups,
+    onUpdateCategoryGroup,
 }) => {
     const [locked, setLocked] = React.useState(false);
     const [zoom, setZoom] = React.useState(1);
@@ -179,7 +188,7 @@ export const FishboneView: React.FC<Props> = ({
             <div className="pane-header">
                 <span className="pane-title">
                     <GitBranch size={16} />
-                    Fishbone
+                    Journey
                 </span>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     {/* Lock toggle */}
@@ -215,6 +224,26 @@ export const FishboneView: React.FC<Props> = ({
                 </div>
             </div>
 
+            {/* Group legend */}
+            <div style={{
+                display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap",
+                padding: "5px 10px", borderBottom: "1px solid #e2e8f0",
+                background: "#fafafa", minHeight: 32, position: "relative",
+            }}>
+                <span style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0, marginRight: 2 }}>Groups</span>
+
+                {groups.map(g => (
+                    <div key={g.id} style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        padding: "2px 8px 2px 6px", borderRadius: 12,
+                        background: `${g.color}18`, border: `1px solid ${g.color}55`,
+                    }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: g.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, color: g.color, fontWeight: 600 }}>{g.name}</span>
+                    </div>
+                ))}
+            </div>
+
             <div className="pane-body" style={{ overflow: "auto", overflowX: "hidden" }}>
                 <svg
                     viewBox={`0 0 ${width} ${height}`}
@@ -236,6 +265,22 @@ export const FishboneView: React.FC<Props> = ({
                         strokeWidth={2}
                     />
 
+                    {/* Root problem node — white rect masks the spine line behind it */}
+                    {(() => {
+                        const lbl = root.label || "Problem";
+                        const bh = calculateBoxHeight(lbl, 16);
+                        return (
+                            <rect
+                                x={spineX - 78}
+                                y={spineStartY - 14 - bh / 2}
+                                width={156}
+                                height={bh}
+                                rx={4}
+                                fill="white"
+                            />
+                        );
+                    })()}
+
                     {/* Editable Problem label at the top of the spine */}
                     <EditableText
                         x={spineX}
@@ -255,7 +300,9 @@ export const FishboneView: React.FC<Props> = ({
 
                         const catPriority = priorityByNode[cat.id];
                         const baseColors = getNodeColors(catPriority, true);
-                        const stroke = selected ? "#3a7dff" : baseColors.stroke;
+                        const catGroup = groups.find(g => g.id === cat.groupId);
+                        const catFill = catGroup ? `${catGroup.color}22` : baseColors.fill;
+                        const stroke = selected ? "#3a7dff" : catGroup?.color ?? baseColors.stroke;
                         const strokeWidth = selected ? 2.6 : 1.4;
 
                         // Calculate dynamic box height for category
@@ -279,7 +326,7 @@ export const FishboneView: React.FC<Props> = ({
                                     width={150}
                                     height={catBoxHeight}
                                     rx={10}
-                                    fill={baseColors.fill}
+                                    fill={catFill}
                                     stroke={stroke}
                                     strokeWidth={strokeWidth}
                                     onClick={() => onSelect(cat.id)}
@@ -330,6 +377,30 @@ export const FishboneView: React.FC<Props> = ({
                                         )}
                                     </g>
                                 )}
+                                {/* Group picker circles — below category box when selected */}
+                                {!locked && selected && groups.length > 0 && (
+                                    <g transform={`translate(${catX}, ${adjustedCatY + catBoxHalfHeight + 14})`}>
+                                        {groups.map((g, gi) => (
+                                            <circle
+                                                key={g.id}
+                                                cx={(gi - (groups.length - 1) / 2) * 18}
+                                                cy={0}
+                                                r={7}
+                                                fill={g.color}
+                                                stroke={cat.groupId === g.id ? "#1e293b" : "rgba(0,0,0,0.15)"}
+                                                strokeWidth={cat.groupId === g.id ? 2.5 : 1}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdateCategoryGroup(cat.id, cat.groupId === g.id ? null : g.id);
+                                                }}
+                                                style={{ cursor: "pointer" }}
+                                            >
+                                                <title>{g.name}</title>
+                                            </circle>
+                                        ))}
+                                    </g>
+                                )}
+
                                 <EditableText
                                     x={catX}
                                     y={adjustedCatY}

@@ -1,0 +1,25 @@
+{
+  "groups": [
+    { "id": "intent",    "name": "Intent",      "color": "#7c3aed" },
+    { "id": "access",    "name": "Access",      "color": "#0369a1" },
+    { "id": "readiness", "name": "Readiness",   "color": "#047857" },
+    { "id": "service",   "name": "Service",     "color": "#b45309" },
+    { "id": "outcome",   "name": "Vaccination", "color": "#0f766e" }
+  ],
+  "perspectiveRoles": [
+    { "id": "p1", "name": "Caregiver - Mother",      "color": "#f472b6" },
+    { "id": "p2", "name": "Caregiver - Father",      "color": "#3b82f6" },
+    { "id": "p3", "name": "Community Health Worker", "color": "#22c55e" },
+    { "id": "p4", "name": "Community Leader",        "color": "#eab308" },
+    { "id": "p5", "name": "Health Facility Manager", "color": "#a855f7" },
+    { "id": "p6", "name": "Supply Chain Manager",    "color": "#f97316" }
+  ],
+  "personas": [
+    { "id": "p1", "name": "Caregiver - Mother",      "color": "#fce7f3" },
+    { "id": "p2", "name": "Caregiver - Father",      "color": "#dbeafe" },
+    { "id": "p3", "name": "Community Health Worker", "color": "#dcfce7" },
+    { "id": "p4", "name": "Community Leader",        "color": "#fef3c7" },
+    { "id": "p5", "name": "Health Facility Manager", "color": "#e9d5ff" },
+    { "id": "p6", "name": "Supply Chain Manager",    "color": "#fed7aa" }
+  ]
+}

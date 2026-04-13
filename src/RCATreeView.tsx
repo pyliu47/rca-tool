@@ -17,6 +17,8 @@ interface Props {
     onUpdateNodePersonas: (nodeId: string, personaIds: string[]) => void;
     onUpdatePersonas: (personas: Persona[]) => void;
     personaColors?: string[];
+    onExpand?: () => void;
+    onClose?: () => void;
 }
 
 interface PositionedNode {
@@ -83,6 +85,8 @@ export const RCATreeView: React.FC<Props> = ({
         "#d1fae5", // teal
         "#fef08a", // lime
     ],
+    onExpand,
+    onClose,
 }) => {
     const minLogicalWidth = 400; // Smaller initial width so it's compact
     const cardWidth = 160;
@@ -108,6 +112,22 @@ export const RCATreeView: React.FC<Props> = ({
                         RCA Tree
                     </span>
                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        {onExpand && (
+                            <button
+                                className="small-btn"
+                                onClick={onExpand}
+                                title="Expand RCA tree"
+                                style={{ padding: "5px 8px", lineHeight: 1 }}
+                            >⛶</button>
+                        )}
+                        {onClose && (
+                            <button
+                                className="small-btn"
+                                onClick={onClose}
+                                title="Close"
+                                style={{ padding: "5px 8px", lineHeight: 1 }}
+                            >×</button>
+                        )}
                         <button
                             className="small-btn"
                             onClick={() => setLocked((v) => !v)}
@@ -195,6 +215,14 @@ export const RCATreeView: React.FC<Props> = ({
                     })()}
                 </span>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    {onExpand && (
+                        <button
+                            className="small-btn"
+                            onClick={onExpand}
+                            title="Expand RCA tree"
+                            style={{ fontSize: 11 }}
+                        >⛶</button>
+                    )}
                     <button
                         className="small-btn"
                         onClick={() => setScale((s) => Math.min(3, s + 0.2))}
@@ -220,67 +248,6 @@ export const RCATreeView: React.FC<Props> = ({
             </div>
 
             <div className="pane-body" style={{ overflow: "auto", position: "relative" }}>
-                {/* Persona Legend - bottom right corner of pane, floating over canvas */}
-                {(() => {
-                    // Collect all persona IDs used in the tree
-                    const usedPersonaIds = new Set<string>();
-                    const collectPersonaIds = (node: RCANode) => {
-                        if (node.personaIds) {
-                            node.personaIds.forEach((id) => usedPersonaIds.add(id));
-                        }
-                        node.children.forEach(collectPersonaIds);
-                    };
-                    collectPersonaIds(treeRoot);
-
-                    const usedPersonas = personas.filter((p) => usedPersonaIds.has(p.id));
-
-                    return usedPersonas.length > 0 ? (
-                        <div
-                            style={{
-                                position: "absolute",
-                                bottom: "80px",
-                                right: "12px",
-                                backgroundColor: "#ffffff",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "8px",
-                                padding: "8px 12px",
-                                zIndex: 10,
-                                maxWidth: "200px",
-                                fontSize: "12px",
-                                pointerEvents: "auto",
-                                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.12)",
-                            }}
-                        >
-                            <div style={{ fontWeight: 600, marginBottom: "6px", color: "#334155" }}>
-                                Personas
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                {usedPersonas.map((p) => (
-                                    <div
-                                        key={p.id}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "6px",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                width: "8px",
-                                                height: "8px",
-                                                borderRadius: "50%",
-                                                backgroundColor: p.color || "#dbeafe",
-                                                border: "0.8px solid #000000",
-                                                flexShrink: 0,
-                                            }}
-                                        />
-                                        <span style={{ color: "#475569" }}>{p.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null;
-                })()}
                 {/* Inner canvas sized to the diagram; keeps scrollbars aligned to SVG */}
                 <div
                     style={{
@@ -301,7 +268,7 @@ export const RCATreeView: React.FC<Props> = ({
                         }}
                     >
                         <g>
-                            {/* Edges */}
+                            {/* Edges — drawn first so nodes render on top */}
                             {allPositioned.map((p) =>
                                 p.node.children.map((child) => {
                                     const c = byId.get(child.id);
@@ -324,6 +291,24 @@ export const RCATreeView: React.FC<Props> = ({
                                     );
                                 })
                             )}
+
+                            {/* Node background masks — cover any edge bleed-through inside node bounds */}
+                            {allPositioned.map((p) => {
+                                const nw = cardWidth;
+                                const nh = getCardHeight(p.node.label);
+                                return (
+                                    <rect
+                                        key={`mask-${p.node.id}`}
+                                        x={p.x - nw / 2}
+                                        y={p.y - nh / 2}
+                                        width={nw}
+                                        height={nh}
+                                        rx={10}
+                                        ry={10}
+                                        fill="white"
+                                    />
+                                );
+                            })}
 
                             {/* Nodes */}
                             {allPositioned.map((p) => {

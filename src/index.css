@@ -177,12 +177,12 @@ body {
 
 /* Fishbone + RCA Tree panes */
 .pane-wide {
-  flex: 3;
+  flex: 1;
 }
 
 /* Notes pane */
 .pane-narrow {
-  flex: 2;
+  flex: 1;
 }
 
 /* ===========================

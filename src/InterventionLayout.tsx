@@ -26,6 +26,7 @@ interface Props {
     setActiveBundleId: (id: string | null) => void;
     createNewBundle: () => void;
     updateBundle: (id: string, fn: (b: TocBundle) => TocBundle) => void;
+    onSelectFocalCause?: (causeId: string) => void;
 }
 
 type TocSelectionType = "none" | "activity" | "input" | "output" | "outcome";
@@ -45,6 +46,7 @@ const InterventionLayout: React.FC<Props> = ({
     setActiveBundleId,
     createNewBundle,
     updateBundle,
+    onSelectFocalCause,
 }) => {
     const bundle = activeBundleId ? tocBundles[activeBundleId] : null;
 
@@ -73,7 +75,7 @@ const InterventionLayout: React.FC<Props> = ({
                         id: cause.id,
                         categoryLabel: category.label,
                         causeLabel: cause.label,
-                        underlyingCauses: cause.children?.map((c) => c.label) || [],
+                        causeHierarchy: cause,
                     });
                     return; // Move to next causeId
                 }
@@ -147,8 +149,16 @@ const InterventionLayout: React.FC<Props> = ({
                         bundle={bundle}
                         focalCauses={focalCauses}
                         onUpdateBundle={(updatedBundle) => updateBundle(bundle.id, () => updatedBundle)}
+                        onReorderFocalCauses={(reorderedCauses) => {
+                            const reorderedIds = reorderedCauses.map(c => c.id);
+                            updateBundle(bundle.id, (b) => ({
+                                ...b,
+                                causeIds: reorderedIds,
+                            }));
+                        }}
                         selectedItemId={tocSelected.bundleId === activeBundleId ? tocSelected.itemId : null}
                         onSelectItem={handleSelectItem}
+                        onSelectFocalCause={(causeId) => onSelectFocalCause?.(causeId)}
                     />
                 ) : (
                     <div className="no-bundle-selected">
@@ -363,7 +373,7 @@ const DraggableItemCard: React.FC<DraggableItemProps> = ({
 
 // ============ ACTIVITY DETAILS PANE ============
 
-interface ActivityDetailsPaneProps {
+export interface ActivityDetailsPaneProps {
     activity: ActivityItem;
     bundle: TocBundle;
     onUpdate: (updates: Partial<ActivityItem>) => void;
@@ -371,7 +381,7 @@ interface ActivityDetailsPaneProps {
     bundleId?: string;
 }
 
-const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
+export const ActivityDetailsPane: React.FC<ActivityDetailsPaneProps> = ({
     activity,
     bundle,
     onUpdate,

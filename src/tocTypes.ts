@@ -68,6 +68,7 @@ export interface OutcomeItem {
     tier?: number; // optional tier level for grouping
     contributingActivityIds: string[]; // activities that contribute to this outcome
     indicators?: IndicatorItem[]; // nested indicators for this outcome
+    linkedIndicatorId?: string; // reference to shared indicator pool
 }
 
 // Theory of Change / Intervention bundle
@@ -104,4 +105,8 @@ export interface TocBundle {
 
     // Bundle-level priority
     priority: PriorityLevel;
+
+    // Deployment period (YYYY-MM); end is optional (open if omitted)
+    deploymentStart?: string;
+    deploymentEnd?: string;
 }

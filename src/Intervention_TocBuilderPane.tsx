@@ -1,6 +1,7 @@
 // src/InterventionToCBuilderPane.tsx
 import React from "react";
 import type { TocBundle, ActivityItem, OutcomeItem } from "./tocTypes";
+import type { RCANode } from "./types";
 
 import {
     DndContext,
@@ -15,7 +16,8 @@ import {
     verticalListSortingStrategy,
     arrayMove,
 } from "@dnd-kit/sortable";
-import { Zap, Target } from "lucide-react";
+import { Zap, Target, CalendarDays, BarChart2 } from "lucide-react";
+import { INDICATORS } from "./indicatorData";
 
 import { SortablePill } from "./SortablePill";
 import Card from "./components/Card";
@@ -27,16 +29,76 @@ export interface FocalCauseInfo {
     id: string;
     categoryLabel: string;
     causeLabel: string;
-    underlyingCauses?: string[];
+    causeHierarchy?: RCANode; // Full cause node with children
 }
 
 interface Props {
     bundle: TocBundle | null;
     focalCauses: FocalCauseInfo[];
     onUpdateBundle: (bundle: TocBundle) => void;
+    onReorderFocalCauses?: (reorderedCauses: FocalCauseInfo[]) => void;
     selectedItemId: string | null;
     onSelectItem: (id: string | null) => void;
+    onSelectFocalCause?: (causeId: string) => void;
 }
+
+// Helper function to render cause hierarchy as chains
+const renderCauseChains = (node: RCANode): React.ReactNode[] => {
+    const lines: React.ReactNode[] = [];
+    
+    if (!node.children || node.children.length === 0) {
+        return lines;
+    }
+    
+    // For each child, build a chain
+    node.children.forEach((child, idx) => {
+        const buildChain = (currentNode: RCANode): string => {
+            let chain = `→ ${currentNode.label}`;
+            // If only one child, continue the chain
+            if (currentNode.children && currentNode.children.length === 1) {
+                chain += ` ${buildChain(currentNode.children[0])}`;
+            }
+            return chain;
+        };
+        
+        const chain = buildChain(child);
+        lines.push(
+            <div
+                key={child.id}
+                style={{
+                    marginTop: idx > 0 ? "4px" : "4px",
+                    fontSize: "12px",
+                    color: "#9ca3af",
+                }}
+            >
+                {chain}
+            </div>
+        );
+        
+        // If this child has multiple children, render each branch separately
+        if (child.children && child.children.length > 1) {
+            child.children.forEach((grandchild) => {
+                const grandchildChains = renderCauseChains(grandchild);
+                grandchildChains.forEach((line) => {
+                    lines.push(
+                        <div
+                            key={`${child.id}-${grandchild.id}`}
+                            style={{
+                                marginTop: "4px",
+                                fontSize: "12px",
+                                color: "#9ca3af",
+                            }}
+                        >
+                            {line}
+                        </div>
+                    );
+                });
+            });
+        }
+    });
+    
+    return lines;
+};
 
 // Helper function to get tier label
 const getTierLabel = (tier?: number): string => {
@@ -56,8 +118,10 @@ export const ToCBuilderPane: React.FC<Props> = ({
     bundle,
     focalCauses,
     onUpdateBundle,
+    onReorderFocalCauses,
     selectedItemId,
     onSelectItem,
+    onSelectFocalCause,
 }) => {
     // If no bundle selected => show placeholder
     if (!bundle) {
@@ -84,6 +148,18 @@ export const ToCBuilderPane: React.FC<Props> = ({
 
         const activeId = String(active.id);
         const overId = String(over.id);
+
+        // Handle focal causes reordering
+        if (activeId.startsWith("focal:") && overId.startsWith("focal:")) {
+            const activeIdx = Number(activeId.split(":")[1]);
+            const overIdx = Number(overId.split(":")[1]);
+
+            if (!Number.isNaN(activeIdx) && !Number.isNaN(overIdx)) {
+                const reordered = arrayMove(orderedFocalCauses, activeIdx, overIdx);
+                onReorderFocalCauses?.(reordered);
+            }
+            return;
+        }
 
         // Handle activities reordering
         if (activeId.startsWith("activity:") && overId.startsWith("activity:")) {
@@ -172,26 +248,8 @@ export const ToCBuilderPane: React.FC<Props> = ({
         updateField("outcomes", filtered);
     };
 
-    // Local state for reordering focal causes (UI-only, no backend update)
-    const [focalCausesOrder] = React.useState<string[]>(
-        focalCauses.map((c) => c.id)
-    );
-
-    // Reorder display based on local state
-    const orderedFocalCauses = React.useMemo(() => {
-        const ordered: FocalCauseInfo[] = [];
-        for (const id of focalCausesOrder) {
-            const cause = focalCauses.find((c) => c.id === id);
-            if (cause) ordered.push(cause);
-        }
-        // Add any new causes that weren't in the order
-        for (const cause of focalCauses) {
-            if (!ordered.find((c) => c.id === cause.id)) {
-                ordered.push(cause);
-            }
-        }
-        return ordered;
-    }, [focalCausesOrder, focalCauses]);
+    // Reorder display based on prop order
+    const orderedFocalCauses = focalCauses;
 
     // -----------------------------------
     // RENDER
@@ -216,6 +274,49 @@ export const ToCBuilderPane: React.FC<Props> = ({
                     onChange={(e) => updateField("description", e.target.value)}
                     placeholder="Briefly describe this intervention..."
                 />
+
+                <div className="section-title" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+                    <CalendarDays size={13} />
+                    Deployment period
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>Start</span>
+                        <input
+                            type="month"
+                            value={bundle.deploymentStart || ""}
+                            onChange={(e) => updateField("deploymentStart", e.target.value || undefined)}
+                            style={{
+                                fontSize: 12, padding: "4px 8px",
+                                border: "1px solid #cbd5e1", borderRadius: 6,
+                                background: "#f9fafb", color: "#1e293b",
+                                outline: "none",
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>End</span>
+                        <input
+                            type="month"
+                            value={bundle.deploymentEnd || ""}
+                            onChange={(e) => updateField("deploymentEnd", e.target.value || undefined)}
+                            style={{
+                                fontSize: 12, padding: "4px 8px",
+                                border: "1px solid #cbd5e1", borderRadius: 6,
+                                background: "#f9fafb", color: "#1e293b",
+                                outline: "none",
+                            }}
+                        />
+                        {bundle.deploymentStart && !bundle.deploymentEnd && (
+                            <span style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>open</span>
+                        )}
+                    </div>
+                    {bundle.deploymentStart && (
+                        <span style={{ fontSize: 11, color: "#64748b" }}>
+                            Shaded on linked indicator charts
+                        </span>
+                    )}
+                </div>
             </section>
 
             {/* Focal causes */}
@@ -251,26 +352,28 @@ export const ToCBuilderPane: React.FC<Props> = ({
                                         <div key={rowIdx} className="focal-causes-row">
                                             {row.map((c) => (
                                                 <SortablePill key={`focal:${c.index}`} id={`focal:${c.index}`}>
-                                                    <div className="focal-card">
+                                                    <div 
+                                                        className="focal-card"
+                                                        onClick={() => onSelectFocalCause?.(c.id)}
+                                                        style={{ cursor: "pointer" }}
+                                                    >
                                                         <div className="focal-cause-header">
-                                                            <div className="focal-cause-label">
+                                                            <div className="focal-cause-label" style={{ wordBreak: "break-word" }}>
                                                                 {c.causeLabel}
                                                             </div>
                                                             {c.categoryLabel && (
-                                                                <div className="focal-category">
+                                                                <div className="focal-category" style={{ wordBreak: "break-word" }}>
                                                                     {c.categoryLabel}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        {c.underlyingCauses && c.underlyingCauses.length > 0 && (
-                                                            <ul className="underlying-list">
-                                                                {c.underlyingCauses.map((u, idx) => (
-                                                                    <li key={idx} className="underlying-item">
-                                                                        {u}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
+                                                        {/* Commented out for now - to be revisited
+                                                        {c.causeHierarchy && c.causeHierarchy.children && c.causeHierarchy.children.length > 0 && (
+                                                            <div className="underlying-list" style={{ wordBreak: "break-word" }}>
+                                                                {renderCauseChains(c.causeHierarchy)}
+                                                            </div>
                                                         )}
+                                                        */}
                                                     </div>
                                                 </SortablePill>
                                             ))}
@@ -434,6 +537,39 @@ export const ToCBuilderPane: React.FC<Props> = ({
                                                 >
                                                     <div style={{ fontSize: '11px', color: '#64748b' }}>
                                                         {outcome.tier && <div>{getTierLabel(outcome.tier)}</div>}
+                                                    </div>
+
+                                                    {/* Indicator link */}
+                                                    <div style={{
+                                                        marginTop: 6, paddingTop: 6,
+                                                        borderTop: "1px solid #f1f5f9",
+                                                        display: "flex", alignItems: "center", gap: 4,
+                                                    }}>
+                                                        <BarChart2 size={11} color="#94a3b8" />
+                                                        <select
+                                                            value={outcome.linkedIndicatorId || ""}
+                                                            onChange={(e) => updateOutcome(outcome.id, {
+                                                                linkedIndicatorId: e.target.value || undefined,
+                                                            })}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{
+                                                                fontSize: 10, flex: 1,
+                                                                border: "1px solid #e2e8f0",
+                                                                borderRadius: 4, padding: "2px 4px",
+                                                                background: outcome.linkedIndicatorId ? "#fffbeb" : "#f9fafb",
+                                                                color: outcome.linkedIndicatorId ? "#92400e" : "#94a3b8",
+                                                                cursor: "pointer",
+                                                            }}
+                                                        >
+                                                            <option value="">Track with indicator…</option>
+                                                            {["intent", "access", "readiness", "service"].map(cat => (
+                                                                <optgroup key={cat} label={cat.charAt(0).toUpperCase() + cat.slice(1)}>
+                                                                    {INDICATORS.filter(i => i.category === cat).map(ind => (
+                                                                        <option key={ind.id} value={ind.id}>{ind.name}</option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            ))}
+                                                        </select>
                                                     </div>
                                                 </Card>
                                             </div>
