@@ -36,7 +36,6 @@ export const FishboneView: React.FC<Props> = ({
     onReorderCauses,
     personas,
     groups,
-    onUpdateGroups,
     onUpdateCategoryGroup,
 }) => {
     const [locked, setLocked] = React.useState(false);

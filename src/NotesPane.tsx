@@ -1,7 +1,6 @@
 // src/NotesPane.tsx
 import React from "react";
 import type { RCANode, PriorityLevel, Persona, FishboneGroup, PerspectiveRole, NoteEntry } from "./types";
-import { findNode } from "./utils";
 import { ClipboardList } from "lucide-react";
 import { IndicatorPanel } from "./IndicatorPanel";
 import { IndicatorDetailPanel, MultiIndicatorView } from "./IndicatorDetailPanel";

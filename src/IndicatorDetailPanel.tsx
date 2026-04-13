@@ -1114,22 +1114,6 @@ const MiniTrendChart: React.FC<MiniTrendChartProps> = ({
     );
 };
 
-// Perspective roles for the analysis panel
-const PERSPECTIVE_ROLES = [
-    { label: "Caregiver",        color: "#f472b6" },
-    { label: "Health Worker",    color: "#10b981" },
-    { label: "Community Leader", color: "#f59e0b" },
-    { label: "Facility Manager", color: "#818cf8" },
-    { label: "Supply Chain",     color: "#fb923c" },
-    { label: "Other",            color: "#94a3b8" },
-];
-
-interface PerspectiveEntry {
-    id: string;
-    role: string;
-    color: string;
-    note: string;
-}
 
 // Distinct chart colors for selected indicators (cycle through)
 const MV_CHART_COLORS = [
@@ -1140,13 +1124,6 @@ const MV_CHART_COLORS = [
 const SETS_STORAGE_KEY = "rca-indicator-sets-v1";
 
 interface IndicatorSet { name: string; ids: string[] }
-
-const formatPeriod = (val: string) => {
-    if (!val) return "";
-    const [year, month] = val.split("-");
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return `${months[parseInt(month, 10) - 1] ?? ""} ${year}`;
-};
 
 interface MultiIndicatorViewProps {
     onClose: () => void;
@@ -1170,7 +1147,7 @@ interface MultiIndicatorViewProps {
 export const MultiIndicatorView: React.FC<MultiIndicatorViewProps> = ({
     onClose, tocBundles, initialIndicatorId, annotationMap = {},
     onAddAnnotation, onDeleteAnnotation,
-    groups = [], perspectiveRoles, indicatorGroupOverrides = {}, personas = [],
+    groups = [], perspectiveRoles, personas = [],
     notes = [], onUpdateNotes, reviewPeriod: reviewPeriodProp, onChangeReviewPeriod,
     root, onAddPersona,
 }) => {

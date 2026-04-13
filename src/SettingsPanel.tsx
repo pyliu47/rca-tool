@@ -208,7 +208,6 @@ const IndicatorAssignment: React.FC<IndicatorAssignmentProps> = ({ groups, overr
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {cats.map(cat => {
                 const catInds = INDICATORS.filter(i => i.category === cat);
-                const defaultGroup = groups.find(g => g.id === cat);
                 return (
                     <div key={cat}>
                         <div style={{

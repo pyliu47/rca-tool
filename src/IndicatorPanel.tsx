@@ -11,7 +11,7 @@ import type { FishboneGroup } from "./types";
 interface Props {
     tocBundles?: Record<string, TocBundle>;
     groups?: FishboneGroup[];
-    onSelectIndicator: (id: string) => void;
+    onSelectIndicator?: (id: string) => void;
     selectedIndicatorId?: string | null;
 }
 
@@ -344,7 +344,7 @@ export const IndicatorPanel: React.FC<Props> = ({ tocBundles, groups = [], onSel
                         key={ind.id}
                         ind={ind}
                         deployments={deploymentMap[ind.id] || []}
-                        onClick={() => onSelectIndicator(ind.id)}
+                        onClick={() => onSelectIndicator?.(ind.id)}
                         selected={selectedIndicatorId === ind.id}
                     />
                 ))}

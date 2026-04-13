@@ -212,7 +212,6 @@ const NoteCard: React.FC<NoteCardProps> = ({
 
     /* ── Compressed view ─────────────────────────────────── */
     if (!isEditing) {
-        const hasTags = entry.causeIds.length > 0 || entry.personaIds.length > 0;
         return (
             <div style={{
                 borderRadius: 8, border: "1px solid #e2e8f0",
